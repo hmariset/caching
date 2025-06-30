@@ -55,6 +55,54 @@ service:
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 3128
 
+# Squid Prometheus Exporter Configuration
+# This enables monitoring of Squid metrics via Prometheus
+# Note: hostname is hardcoded to "localhost" in deployment template since
+# the exporter runs as a sidecar in the same pod as squid
+# Note: squid port is referenced from service.port to avoid duplication
+squidExporter:
+  # Enable or disable the squid-exporter sidecar
+  enabled: true
+  # Squid exporter container image
+  image:
+    repository: boynux/squid-exporter
+    tag: "v1.13.0"
+    pullPolicy: IfNotPresent
+  # Port on which the exporter will serve metrics
+  port: 9301
+  # Metrics path for Prometheus scraping
+  metricsPath: "/metrics"
+  # Optional authentication (leave empty if not needed)
+  squidLogin: ""
+  squidPassword: ""
+  # Extract service times (increases metric detail)
+  extractServiceTimes: "true"
+  # Custom labels to add to metrics
+  customLabels: {}
+  # Resource limits and requests for the exporter
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  # Probe configurations for squid-exporter sidecar
+  livenessProbe:
+    httpGet:
+      path: "/metrics"  # Will use squidExporter.metricsPath in template
+      port: metrics
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  readinessProbe:
+    httpGet:
+      path: "/metrics"  # Will use squidExporter.metricsPath in template
+      port: metrics
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
@@ -87,14 +135,16 @@ resources:
   #   memory: 128Mi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+# TCP probes are used for the squid container as they are more appropriate for proxy services
 livenessProbe:
-  httpGet:
-    path: /
+  tcpSocket:
     port: http
+  enabled: true
+  
 readinessProbe:
-  httpGet:
-    path: /
+  tcpSocket:
     port: http
+  enabled: true
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:
@@ -135,6 +185,26 @@ namespace:
 installCertManagerComponents: true
 
 # Cert-manager and Trust-manager configuration
+# Prometheus monitoring configuration
+prometheus:
+  # Enable ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    # Namespace where the ServiceMonitor should be created
+    # If empty, it will be created in the same namespace as the application
+    namespace: ""
+    # Additional labels for the ServiceMonitor
+    labels: {}
+    # Scrape interval
+    interval: 30s
+    # Scrape timeout
+    scrapeTimeout: 10s
+    # Metrics path (should match squidExporter.metricsPath)
+    path: "/metrics"
+    # Additional annotations for the ServiceMonitor
+    annotations: {}
+
+# Cert-manager configuration
 # Based on https://cert-manager.io/docs/installation/helm/
 test:
   enabled: true # Enable helm test functionality
