@@ -44,6 +44,7 @@ RUN chown -R root:root /var/log/squid
 RUN chown -R root:root /var/spool/squid
 RUN chown -R root:root /run/squid
 
+RUN chmod g=u /etc/squid/squid.conf
 RUN chmod g=u /run/squid
 RUN chmod g=u /var/spool/squid
 RUN chmod g=u /var/log/squid

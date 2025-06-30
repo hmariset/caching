@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "squid.fullname" . }}-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+data:
+  squid.conf: |-
+    {{- .Files.Get "squid.conf" | nindent 4 }} 
