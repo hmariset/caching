@@ -1,0 +1,30 @@
+{
+    "git.inputValidation": true,
+    "git.inputValidationLength": 72,
+    "git.inputValidationSubjectLength": 50,
+    "git.verboseCommit": true,
+    "editor.rulers": [
+        80,
+        100
+    ],
+    "editor.wordWrap": "off",
+    "editor.wordWrapColumn": 100,
+    "[git-commit]": {
+        "editor.rulers": [
+            50,
+            72
+        ],
+        "editor.wordWrap": "wordWrapColumn",
+        "editor.wordWrapColumn": 72,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
+    },
+    "[scm-input]": {
+        "editor.rulers": [
+            50,
+            72
+        ],
+        "editor.wordWrap": "wordWrapColumn",
+        "editor.wordWrapColumn": 72
+    }
+}

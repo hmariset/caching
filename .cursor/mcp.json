@@ -1,0 +1,7 @@
+{
+    "mcpServers": {
+        "jira-mcp-server": {
+            "url": "https://jira-mcp-snowflake.mcp-playground-poc.devshift.net/sse"
+        }
+    }
+}

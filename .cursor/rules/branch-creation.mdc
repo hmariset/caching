@@ -1,0 +1,184 @@
+---
+description: Branch Creation Process, to apply when user is asking for branch cretion from Jira info
+alwaysApply: false
+---
+# Branch Creation from Jira Issues
+
+**When to apply**: When creating new branches based on Jira issues
+
+**Description**: Rules for creating properly named branches from Jira issue information
+
+## Prerequisites
+
+### 1. Jira Token Setup
+Before creating branches, set up authentication:
+
+```bash
+# Create token file (only once)
+echo "your_personal_access_token_here" > .jira-token
+```
+
+**Security Notes:**
+- Never commit `.jira-token` to version control (already in `.gitignore`)
+- Revoke and regenerate tokens if exposed
+- Use personal access tokens from Jira settings
+
+## Branch Creation Process
+
+### 1. Get Jira Issue Number
+- Ask user for the Jira issue number (e.g., "KFLUXVNGD-387")
+- Validate format matches pattern: `[A-Z]{2,}-[0-9]+`
+
+### 2. Fetch Issue Details from API
+Use Red Hat Jira API v2 with Bearer token authentication:
+
+```bash
+# Fetch issue details
+TOKEN=$(cat .jira-token)
+curl -s -H "Authorization: Bearer $TOKEN" \
+     -H "Accept: application/json" \
+     "https://issues.redhat.com/rest/api/2/issue/KFLUXVNGD-387"
+
+# Extract summary
+curl -s -H "Authorization: Bearer $TOKEN" \
+     -H "Accept: application/json" \
+     "https://issues.redhat.com/rest/api/2/issue/KFLUXVNGD-387" | \
+     grep -o '"summary":"[^"]*"' | cut -d'"' -f4
+
+# Extract issue type
+curl -s -H "Authorization: Bearer $TOKEN" \
+     -H "Accept: application/json" \
+     "https://issues.redhat.com/rest/api/2/issue/KFLUXVNGD-387" | \
+     grep -o '"issuetype":{"[^}]*"name":"[^"]*"' | cut -d'"' -f8
+```
+
+### 3. Generate Branch Name
+- Format: `{JIRA-ID}-{short-description}`
+- Convert summary to kebab-case
+- **Limit to 30 characters total** (user preference)
+- Remove special characters and spaces
+- Prioritize issue key + meaningful keywords
+
+## Branch Naming Convention
+
+**30-character limit examples:**
+```
+KFLUXVNGD-387-squid-logs-stdout  (30 chars)
+KFLUXVNGD-358-helm-chart-design  (30 chars)
+KFLUXVNGD-359-fix-auth-timeout   (29 chars)
+```
+
+## Branch Creation Commands
+
+### Local Branch Only
+```bash
+# Create and switch to new branch
+git checkout -b {branch-name}
+```
+
+### With Remote Push
+```bash
+# Create and switch to new branch
+git checkout -b {branch-name}
+
+# Push new branch to origin (after commits)
+git push -u origin {branch-name}
+```
+
+## Issue Type Mapping
+
+Use direct issue number format for all types:
+- **Bug**: Direct issue number (no prefix)
+- **Story**: Direct issue number (no prefix)
+- **Task**: Direct issue number (no prefix)
+- **Epic**: Direct issue number (no prefix)
+
+## Working Example
+
+### Successful Process (KFLUXVNGD-387)
+
+```bash
+# 1. Fetch issue details
+TOKEN=$(cat .jira-token)
+SUMMARY=$(curl -s -H "Authorization: Bearer $TOKEN" \
+               -H "Accept: application/json" \
+               "https://issues.redhat.com/rest/api/2/issue/KFLUXVNGD-387" | \
+          grep -o '"summary":"[^"]*"' | cut -d'"' -f4)
+
+# 2. Issue details retrieved:
+# Summary: "Task 1.1.5: Ensure all Squid logs go to STDOUT"
+# Type: Task
+
+# 3. Generated branch name (30 chars):
+# KFLUXVNGD-387-squid-logs-stdout
+
+# 4. Create branch
+git checkout -b KFLUXVNGD-387-squid-logs-stdout
+```
+
+## API Requirements
+
+### Working Configuration
+- **Base URL**: `https://issues.redhat.com`
+- **API Version**: `/rest/api/2/` (v2, not v3)
+- **Authentication**: `Authorization: Bearer {token}`
+- **Content Type**: `Accept: application/json`
+
+### Authentication Method
+```bash
+# Bearer token (WORKING)
+curl -H "Authorization: Bearer $TOKEN" \
+     -H "Accept: application/json" \
+     "https://issues.redhat.com/rest/api/2/issue/{ISSUE-KEY}"
+
+# Basic auth (NOT WORKING with Red Hat Jira)
+# curl -u "email:token" (returns 401)
+```
+
+## Troubleshooting
+
+### API Access Issues
+1. **401 Unauthorized**:
+   - Check token validity in Jira settings
+   - Verify using API v2 (not v3)
+   - Ensure Bearer token format
+
+2. **No Response/Hanging**:
+   - Add timeouts: `--connect-timeout 10 --max-time 30`
+   - Check network connectivity
+   - Verify Jira URL accessibility
+
+3. **Token Exposure**:
+   - Revoke exposed token immediately
+   - Generate new token
+   - Update `.jira-token` file
+   - Verify `.gitignore` includes `.jira-token`
+
+### Branch Name Issues
+1. **Too Long**: Abbreviate description parts
+2. **Special Characters**: Convert to kebab-case
+3. **Unclear**: Include key meaningful words from summary
+
+## Integration with Commit Messages
+
+After creating branch, remind user that:
+- Commit messages will automatically include the Jira issue in scope
+- The commit-messages.mdc rule will handle formatting
+- First commit should reference the issue details
+
+## Security Best Practices
+
+1. **Token Management**:
+   - Store in `.jira-token` file (gitignored)
+   - Use personal access tokens (not passwords)
+   - Rotate tokens regularly
+   - Revoke immediately if exposed
+
+2. **Version Control**:
+   - Always gitignore token files
+   - Never commit authentication credentials
+   - Use environment variables in CI/CD
+
+## File Pattern Matching
+
+Apply to: `**/*` (all files when discussing branch creation)
