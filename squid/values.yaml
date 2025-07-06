@@ -129,3 +129,55 @@ affinity: {}
 namespace:
   name: proxy
   annotations: {}
+
+# Cert-manager configuration
+# Based on https://cert-manager.io/docs/installation/helm/
+cert-manager:
+  enabled: true  # Set to true to enable cert-manager
+  namespace: "cert-manager"  # Deploy to dedicated namespace
+  installCRDs: true  # Install cert-manager Custom Resource Definitions
+  global:
+    leaderElection:
+      namespace: "cert-manager"  # Namespace for leader election
+    podSecurityPolicy:
+      enabled: false  # Disable Pod Security Policy
+    rbac:
+      create: true  # Create RBAC resources
+    serviceAccount:
+      create: true  # Create service accounts
+      name: ""
+      annotations: {}
+      automountServiceAccountToken: true
+  replicaCount: 1  
+  image:
+    repository: quay.io/jetstack/cert-manager-controller
+    tag: v1.18.0
+    pullPolicy: IfNotPresent
+  webhook:
+    replicaCount: 1
+    image:
+      repository: quay.io/jetstack/cert-manager-webhook
+      tag: v1.18.0
+      pullPolicy: IfNotPresent
+  cainjector:
+    enabled: true  # Enable the CA injector component
+    replicaCount: 1
+    image:
+      repository: quay.io/jetstack/cert-manager-cainjector
+      tag: v1.18.0
+      pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

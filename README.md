@@ -104,6 +104,14 @@ kubectl get pods -n proxy
 kubectl get svc -n proxy
 ```
 
+By default, the cert-manager dependency will be deployed into the cert-manager namespace. 
+If you wish to disable this deployment, you can do so by setting the parameter `--set cert-manager.enabled=false`
+
+```bash
+# Install the Helm chart without cert-manager
+helm install squid ./squid --set cert-manager.enabled=false
+```
+
 ## Using the Proxy
 
 ### From Within the Cluster
