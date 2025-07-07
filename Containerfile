@@ -29,6 +29,8 @@ EXPOSE 3128
 # default port for communication with cache peers
 EXPOSE 3130
 
+COPY LICENSE /licenses/
+
 RUN microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
