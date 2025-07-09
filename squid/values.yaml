@@ -135,7 +135,7 @@ namespace:
 cert-manager:
   enabled: true  # Set to true to enable cert-manager
   namespace: "cert-manager"  # Deploy to dedicated namespace
-  installCRDs: true  # Install cert-manager Custom Resource Definitions
+  installCRDs: false  # Install cert-manager Custom Resource Definitions
   global:
     leaderElection:
       namespace: "cert-manager"  # Namespace for leader election

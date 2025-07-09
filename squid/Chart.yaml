@@ -29,3 +29,7 @@ dependencies:
     version: v1.18.0
     repository: https://charts.jetstack.io
     condition: cert-manager.enabled
+  - name: trust-manager
+    version: v0.18.0
+    repository: https://charts.jetstack.io
+    condition: cert-manager.enabled
