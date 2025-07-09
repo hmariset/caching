@@ -1,0 +1,12 @@
+{{- if (index .Values "selfsigned-bundle").enabled }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Values.namespace.name }}-ca-issuer
+  namespace: {{ (index .Values "cert-manager").namespace }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: {{ .Values.namespace.name }}-tls
+{{- end }} 

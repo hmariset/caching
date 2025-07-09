@@ -1,0 +1,17 @@
+{{- if (index .Values "selfsigned-bundle").enabled }}
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: {{ .Values.namespace.name }}-ca-bundle
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  sources:
+  - secret:
+      name: "{{ .Values.namespace.name }}-tls"
+      key: "ca.crt"
+  - useDefaultCAs: true
+  target:
+    configMap:
+      key: "ca-bundle.crt"
+{{- end }} 

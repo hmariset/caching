@@ -1,4 +1,4 @@
-{{- if (index .Values "cert-manager").enabled }}
+{{- if .Values.installCertManagerComponents }}
 apiVersion: v1
 kind: Namespace
 metadata:

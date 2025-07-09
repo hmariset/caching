@@ -1,0 +1,21 @@
+{{- if (index .Values "selfsigned-bundle").enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.namespace.name }}-certificate
+  namespace: {{ (index .Values "cert-manager").namespace }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.namespace.name }}-tls
+  duration: 2160h
+  renewBefore: 360h
+  commonName: {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc
+  dnsNames:
+  - localhost
+  isCA: true
+  issuerRef:
+    name: {{ .Values.namespace.name }}-selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+{{- end }} 

@@ -130,7 +130,11 @@ namespace:
   name: proxy
   annotations: {}
 
-# Cert-manager configuration
+# Cert-manager and Trust-manager installation control
+# Set to true to install cert-manager and trust-manager components
+installCertManagerComponents: true
+
+# Cert-manager and Trust-manager configuration
 # Based on https://cert-manager.io/docs/installation/helm/
 cert-manager:
   enabled: true  # Set to true to enable cert-manager
@@ -181,3 +185,16 @@ cert-manager:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+
+trust-manager:
+  crds:
+    enabled: false
+    keep: false
+  namespace: "cert-manager"
+
+
+# Issuer configuration
+# Creates a self-signed issuer and bundle in the cert-manager namespace
+selfsigned-bundle:
+  enabled: true  # Set to true to create a self-signed issuer and bundle

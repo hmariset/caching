@@ -104,13 +104,36 @@ kubectl get pods -n proxy
 kubectl get svc -n proxy
 ```
 
-By default, the cert-manager dependency will be deployed into the cert-manager namespace. 
-If you wish to disable this deployment, you can do so by setting the parameter `--set cert-manager.enabled=false`
+By default: 
+- The cert-manager and trust-manager dependencies will be deployed into the cert-manager namespace. 
+If you wish to disable these deployments, you can do so by setting the parameter `--set installCertManagerComponents=false`
 
-```bash
-# Install the Helm chart without cert-manager
-helm install squid ./squid --set cert-manager.enabled=false
-```
+- The resources (issuer, certificate, bundle) are created
+if you wish to disable the resources creation, you can do so by setting the parameter `--set selfsigned-bundle.enabled=false`
+
+#### Examples:
+
+  ```bash
+  # Install squid + cert-manager + trust-manager + resources
+  helm install squid ./squid
+  ```
+
+  ```bash
+  # Install squid without cert-manager, without trust-manager and without creating resources
+  helm install squid ./squid --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
+  ```
+
+  ```bash
+  # Install squid + cert-manager + trust-manager without creating resources
+  helm install squid ./squid --set selfsigned-issuer.enabled=false
+  ```
+
+  ```bash
+  # Install squid without cert-manager, without trust-manager + create resources
+  helm install squid ./squid --set installCertManagerComponents=false
+  ```
+  
+
 
 ## Using the Proxy
 
