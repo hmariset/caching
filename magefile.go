@@ -171,11 +171,24 @@ func (Kind) Status() error {
 func (Build) Squid() error {
 	fmt.Println("🐳 Building Squid container image...")
 
-	// TODO: Implement Squid image building logic
-	// - Build image from Containerfile
-	// - Tag appropriately
+	// Build the squid image using podman
+	fmt.Printf("📦 Building image with tag 'localhost/konflux-ci/squid:latest'...\n")
+	err := sh.Run("podman", "build", "-t", "localhost/konflux-ci/squid:latest", "-f", "Containerfile", ".")
+	if err != nil {
+		return fmt.Errorf("failed to build squid image: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	fmt.Printf("✅ Squid image built successfully\n")
+
+	// Verify the image was built
+	fmt.Printf("🔍 Verifying image exists...\n")
+	err = sh.Run("podman", "images", "localhost/konflux-ci/squid:latest")
+	if err != nil {
+		return fmt.Errorf("failed to verify squid image: %w", err)
+	}
+
+	fmt.Printf("✅ Squid image 'localhost/konflux-ci/squid:latest' is ready!\n")
+	return nil
 }
 
 // Build:LoadSquid loads the Squid image into the kind cluster
