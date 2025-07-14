@@ -364,26 +364,46 @@ func (SquidHelm) Status() error {
 // All runs the complete automation workflow
 func All() error {
 	fmt.Println("🎯 Running complete automation workflow...")
+	fmt.Println("This will set up the complete local dev/test environment")
+	fmt.Println("(dependencies will be handled automatically)")
+	fmt.Println()
 
-	// TODO: Implement full workflow with proper dependencies
-	// This will eventually call the tasks in proper order:
-	// 1. Kind:Up
-	// 2. Build:Squid
-	// 3. Build:LoadSquid
-	// 4. SquidHelm:Up
-	// 5. SquidHelm:Status
+	// SquidHelm.Up will automatically handle all dependencies:
+	// SquidHelm.Up -> Build.LoadSquid -> Kind.Up + Build.Squid
+	err := (SquidHelm{}).Up()
+	if err != nil {
+		return err
+	}
 
-	return fmt.Errorf("not implemented yet")
+	fmt.Println()
+	fmt.Println("🎉 Complete automation workflow finished successfully!")
+	fmt.Println("Your local dev/test environment is ready:")
+	fmt.Println("  • Kind cluster: 'caching'")
+	fmt.Println("  • Squid proxy: http://squid.proxy.svc.cluster.local:3128")
+	fmt.Println("  • Ready for development and testing!")
+	return nil
 }
 
 // Clean removes all resources (cluster, images, etc.)
 func Clean() error {
 	fmt.Println("🧹 Cleaning up all resources...")
+	fmt.Println("This will remove:")
+	fmt.Println("  • Kind cluster (including all deployments)")
+	fmt.Println("  • Built container images")
+	fmt.Println()
 
-	// TODO: Implement cleanup logic
-	// - Remove kind cluster
-	// - Remove built images
-	// - Clean up any temporary files
+	fmt.Printf("🗑️  Removing kind cluster...\n")
+	err := (Kind{}).Down()
+	if err != nil {
+		fmt.Printf("⚠️  Warning: Failed to remove kind cluster: %v\n", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	fmt.Printf("🗑️  Removing container images...\n")
+	err = sh.Run("podman", "rmi", squidImageTag)
+	if err != nil {
+		fmt.Printf("⚠️  Warning: Failed to remove container image: %v\n", err)
+	}
+
+	fmt.Printf("✅ Resource cleanup completed!\n")
+	return nil
 }
