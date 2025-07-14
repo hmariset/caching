@@ -19,10 +19,12 @@ initialization if either value is too low.
 
 ### Option 1: Manual Installation
 
+- [Go](https://golang.org/doc/install) 1.21 or later
 - [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/getting-started/installation)
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (Kubernetes in Docker)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [Helm](https://helm.sh/docs/intro/install/) v3.x
+- [Mage](https://magefile.org/) (for automation - `go install github.com/magefile/mage@latest`)
 
 ### Option 2: Development Container (Automated)
 
@@ -47,6 +49,56 @@ This repository includes a dev container configuration that provides a consisten
     ```
 
 Once these prerequisites are met, you can open this folder in VS Code and use the "Reopen in Container" command to launch the environment with all tools pre-configured.
+
+## Automated Quick Start (Recommended)
+
+This repository includes complete automation for setting up your local development and testing environment. Use this approach for the easiest setup:
+
+### Complete Environment Setup
+
+```bash
+# Set up the complete local dev/test environment automatically
+mage all
+```
+
+This single command will:
+- Create the 'caching' kind cluster (or connect to existing)
+- Build the squid container image
+- Load the image into the cluster
+- Deploy the Helm chart with all dependencies
+- Verify the deployment status
+
+### Individual Components
+
+You can also run individual components:
+
+```bash
+# Cluster management
+mage kind:up          # Create/connect to cluster
+mage kind:status      # Check cluster status
+mage kind:down        # Remove cluster
+mage kind:upClean     # Force recreate cluster
+
+# Image management
+mage build:squid      # Build squid image
+mage build:loadSquid  # Load image into cluster
+
+# Deployment management
+mage squidHelm:up     # Deploy/upgrade helm chart
+mage squidHelm:status # Check deployment status
+mage squidHelm:down   # Remove deployment
+mage squidHelm:upClean # Force redeploy
+
+# Complete cleanup
+mage clean           # Remove everything (cluster, images, etc.)
+```
+
+### List All Available Commands
+
+```bash
+# See all available automation commands
+mage -l
+```
 
 ## Working with Existing kind Clusters
 
@@ -86,33 +138,48 @@ kubectl cluster-info
 
 ## Quick Start
 
-### 1. Create a kind Cluster
+### Automated Setup (Recommended)
+
+For the easiest setup, use the automation:
 
 ```bash
-# Create a new kind cluster
+# Complete environment setup in one command
+mage all
+```
+
+This will handle all the steps below automatically with proper error handling and dependency management.
+
+### Manual Setup (Advanced)
+
+If you prefer manual control or want to understand the individual steps:
+
+#### 1. Create a kind Cluster
+
+```bash
+# Create a new kind cluster (or use: mage kind:up)
 kind create cluster --name kind
 
 # Verify the cluster is running
 kubectl cluster-info --context kind-kind
 ```
 
-### 2. Build and Load the Squid Container Image
+#### 2. Build and Load the Squid Container Image
 
 ```bash
-# Build the container image
+# Build the container image (or use: mage build:squid)
 podman build -t konflux-ci/squid -f Containerfile .
 
-# Load the image into kind using process substitution
+# Load the image into kind (or use: mage build:loadSquid)
 kind load image-archive --name kind <(podman save localhost/konflux-ci/squid:latest)
 ```
 
-### 3. Deploy Squid with Helm
+#### 3. Deploy Squid with Helm
 
 ```bash
-# Install the Helm chart
+# Install the Helm chart (or use: mage squidHelm:up)
 helm install squid ./squid
 
-# Verify deployment
+# Verify deployment (or use: mage squidHelm:status)
 kubectl get pods -n proxy
 kubectl get svc -n proxy
 ```
@@ -349,24 +416,53 @@ This is normal - Kubernetes is performing TCP health checks without sending comp
 
 ## Cleanup
 
-### Remove the Deployment
+### Automated Cleanup (Recommended)
 
 ```bash
-# Uninstall the Helm release
+# Remove everything (cluster, deployments, images) in one command
+mage clean
+```
+
+This will efficiently remove all resources in the correct order.
+
+### Individual Component Cleanup
+
+You can also clean up individual components:
+
+```bash
+# Remove only the helm deployment
+mage squidHelm:down
+
+# Remove only the kind cluster
+mage kind:down
+
+# Check status of components
+mage kind:status
+mage squidHelm:status
+```
+
+### Manual Cleanup (Advanced)
+
+If you prefer manual control:
+
+#### Remove the Deployment
+
+```bash
+# Uninstall the Helm release (or use: mage squidHelm:down)
 helm uninstall squid
 
 # Remove the namespace (optional, will be recreated on next install)
 kubectl delete namespace proxy
 ```
 
-### Remove the kind Cluster
+#### Remove the kind Cluster
 
 ```bash
-# Delete the entire cluster
+# Delete the entire cluster (or use: mage kind:down)
 kind delete cluster --name kind
 ```
 
-### Clean Up Local Images
+#### Clean Up Local Images
 
 ```bash
 # Remove the local container image
@@ -405,6 +501,20 @@ When modifying the chart:
 2. Update this README if adding new features
 3. Verify the proxy works both within and across namespaces
 4. Check that cleanup procedures work correctly
+
+## Automation Benefits
+
+The Mage-based automation system provides several key benefits:
+
+- **Dependency Management**: Automatically handles prerequisites (cluster → image → deployment)
+- **Error Handling**: Robust error handling with clear feedback
+- **Idempotent Operations**: Can run commands multiple times safely
+- **Smart Logic**: Detects existing resources and handles install vs upgrade scenarios
+- **Consistent Patterns**: All resource types follow the same up/down/status/upClean pattern
+- **Single Command Setup**: `mage all` sets up the complete environment
+- **Efficient Cleanup**: `mage clean` removes all resources in the correct order
+
+For the best experience, use the automation commands instead of manual setup!
 
 ## License
 
