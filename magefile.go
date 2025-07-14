@@ -20,7 +20,13 @@ type Build mg.Namespace
 // Deploy manages deployment operations
 type Deploy mg.Namespace
 
-const clusterName = "caching"
+const (
+	clusterName = "caching"
+	// SquidImageTag is the tag used for the squid container image
+	squidImageTag = "localhost/konflux-ci/squid:latest"
+	// SquidContainerfile is the path to the Containerfile for squid
+	squidContainerfile = "Containerfile"
+)
 
 // Default target - shows available targets
 func Default() error {
@@ -172,8 +178,8 @@ func (Build) Squid() error {
 	fmt.Println("🐳 Building Squid container image...")
 
 	// Build the squid image using podman
-	fmt.Printf("📦 Building image with tag 'localhost/konflux-ci/squid:latest'...\n")
-	err := sh.Run("podman", "build", "-t", "localhost/konflux-ci/squid:latest", "-f", "Containerfile", ".")
+	fmt.Printf("📦 Building image with tag '%s'...\n", squidImageTag)
+	err := sh.Run("podman", "build", "-t", squidImageTag, "-f", squidContainerfile, ".")
 	if err != nil {
 		return fmt.Errorf("failed to build squid image: %w", err)
 	}
@@ -182,24 +188,38 @@ func (Build) Squid() error {
 
 	// Verify the image was built
 	fmt.Printf("🔍 Verifying image exists...\n")
-	err = sh.Run("podman", "images", "localhost/konflux-ci/squid:latest")
+	err = sh.Run("podman", "images", squidImageTag)
 	if err != nil {
 		return fmt.Errorf("failed to verify squid image: %w", err)
 	}
 
-	fmt.Printf("✅ Squid image 'localhost/konflux-ci/squid:latest' is ready!\n")
+	fmt.Printf("✅ Squid image '%s' is ready!\n", squidImageTag)
 	return nil
 }
 
 // Build:LoadSquid loads the Squid image into the kind cluster
 func (Build) LoadSquid() error {
+	// Ensure dependencies are met
+	mg.Deps(Kind.Up, Build.Squid)
+
 	fmt.Println("📦 Loading Squid image into kind cluster...")
 
-	// TODO: Implement image loading logic
-	// - Load built Squid image into kind cluster
-	// - Verify image is available in cluster
+	// Load image into kind cluster using process substitution
+	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
+	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, squidImageTag))
+	if err != nil {
+		return fmt.Errorf("failed to load image into kind cluster: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	// Verify image is available in cluster
+	fmt.Printf("🔍 Verifying image is available in cluster...\n")
+	err = internal.GetNodeStatus(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to connect to cluster for verification: %w", err)
+	}
+
+	fmt.Printf("✅ Squid image loaded successfully into kind cluster '%s'!\n", clusterName)
+	return nil
 }
 
 // Deploy:Helm deploys the Squid Helm chart to the cluster
