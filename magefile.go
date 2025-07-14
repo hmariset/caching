@@ -17,8 +17,8 @@ type Kind mg.Namespace
 // Build manages image building operations
 type Build mg.Namespace
 
-// Deploy manages deployment operations
-type Deploy mg.Namespace
+// SquidHelm manages squid helm chart operations
+type SquidHelm mg.Namespace
 
 const (
 	clusterName = "caching"
@@ -222,26 +222,143 @@ func (Build) LoadSquid() error {
 	return nil
 }
 
-// Deploy:Helm deploys the Squid Helm chart to the cluster
-func (Deploy) Helm() error {
+// SquidHelm:Up deploys the Squid Helm chart to the cluster
+func (SquidHelm) Up() error {
+	// Ensure dependencies are met
+	mg.Deps(Build.LoadSquid)
+
 	fmt.Println("⚓ Deploying Squid Helm chart...")
 
-	// TODO: Implement Helm chart deployment logic
-	// - Deploy squid chart with customizations
-	// - Wait for deployment to be ready
+	// Ensure required helm repositories are available
+	fmt.Printf("📦 Ensuring helm repositories are available...\n")
+	err := internal.EnsureHelmRepo("jetstack", "https://charts.jetstack.io")
+	if err != nil {
+		return fmt.Errorf("failed to ensure jetstack repository: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	// Build helm dependencies from lock file
+	fmt.Printf("📦 Building helm dependencies...\n")
+	err = sh.Run("helm", "dependency", "build", "./squid")
+	if err != nil {
+		return fmt.Errorf("failed to build helm dependencies: %w", err)
+	}
+
+	// Check if release already exists
+	exists, err := internal.ReleaseExists("squid")
+	if err != nil {
+		return fmt.Errorf("failed to check release existence: %w", err)
+	}
+
+	if exists {
+		// Upgrade existing release
+		fmt.Printf("⚓ Upgrading existing squid helm release and waiting for readiness...\n")
+		err = sh.Run("helm", "upgrade", "squid", "./squid", "--wait", "--timeout=120s")
+		if err != nil {
+			return fmt.Errorf("failed to upgrade helm chart: %w", err)
+		}
+	} else {
+		// Install new release
+		fmt.Printf("⚓ Installing squid helm chart and waiting for readiness...\n")
+		err = sh.Run("helm", "install", "squid", "./squid", "--wait", "--timeout=120s")
+		if err != nil {
+			return fmt.Errorf("failed to install helm chart: %w", err)
+		}
+	}
+
+	// Show comprehensive deployment status
+	fmt.Printf("🔍 Verifying deployment status...\n")
+	err = (SquidHelm{}).Status()
+	if err != nil {
+		return fmt.Errorf("deployment verification failed: %w", err)
+	}
+
+	fmt.Printf("✅ Squid helm chart deployed successfully!\n")
+	return nil
 }
 
-// Deploy:Status shows the deployment status
-func (Deploy) Status() error {
+// SquidHelm:Down removes the Squid Helm chart from the cluster
+func (SquidHelm) Down() error {
+	fmt.Println("🗑️  Removing Squid Helm chart...")
+
+	// Check if release exists first
+	exists, err := internal.ReleaseExists("squid")
+	if err != nil {
+		return fmt.Errorf("failed to check release existence: %w", err)
+	}
+
+	if !exists {
+		fmt.Printf("ℹ️  Helm release 'squid' does not exist\n")
+		return nil
+	}
+
+	// Uninstall the helm release
+	fmt.Printf("🗑️  Uninstalling squid helm release...\n")
+	err = sh.Run("helm", "uninstall", "squid")
+	if err != nil {
+		return fmt.Errorf("failed to uninstall helm chart: %w", err)
+	}
+
+	// Wait for proxy namespace to be fully deleted
+	err = internal.WaitForNamespaceDeleted("proxy")
+	if err != nil {
+		fmt.Printf("⚠️  Warning: %v\n", err)
+		// Don't fail the function, just warn - the namespace might be stuck
+	}
+
+	fmt.Printf("✅ Squid helm chart removed successfully!\n")
+	return nil
+}
+
+// SquidHelm:UpClean forces redeployment of the Squid Helm chart (removes and reinstalls)
+func (SquidHelm) UpClean() error {
+	fmt.Println("🔄 Force redeploying Squid Helm chart...")
+
+	// Remove existing release
+	err := (SquidHelm{}).Down()
+	if err != nil {
+		return fmt.Errorf("failed to remove existing release: %w", err)
+	}
+
+	// Install fresh release
+	fmt.Printf("⚓ Installing fresh squid helm chart...\n")
+	return (SquidHelm{}).Up()
+}
+
+// SquidHelm:Status shows the deployment status
+func (SquidHelm) Status() error {
 	fmt.Println("📊 Checking deployment status...")
 
-	// TODO: Implement deployment status check
-	// - Show pod status
-	// - Show service status
+	// Check if squid helm release exists
+	fmt.Printf("🔍 Checking helm release status...\n")
+	err := sh.Run("helm", "status", "squid")
+	if err != nil {
+		fmt.Printf("❌ Helm release 'squid' not found or not deployed\n")
+		return fmt.Errorf("helm release not found: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	// Show pod status
+	fmt.Printf("🖥️  Pod status:\n")
+	err = sh.RunV("kubectl", "get", "pods", "-n", "proxy", "-l", "app.kubernetes.io/name=squid")
+	if err != nil {
+		fmt.Printf("⚠️  Could not get pod status: %v\n", err)
+	}
+
+	// Show service status
+	fmt.Printf("🌐 Service status:\n")
+	err = sh.RunV("kubectl", "get", "svc", "-n", "proxy", "-l", "app.kubernetes.io/name=squid")
+	if err != nil {
+		fmt.Printf("⚠️  Could not get service status: %v\n", err)
+	}
+
+	// Show deployment status
+	fmt.Printf("📦 Deployment status:\n")
+	err = sh.RunV("kubectl", "get", "deployment", "-n", "proxy", "-l", "app.kubernetes.io/name=squid")
+	if err != nil {
+		fmt.Printf("⚠️  Could not get deployment status: %v\n", err)
+	}
+
+	fmt.Printf("✅ Deployment status check completed!\n")
+	return nil
 }
 
 // All runs the complete automation workflow
@@ -253,8 +370,8 @@ func All() error {
 	// 1. Kind:Up
 	// 2. Build:Squid
 	// 3. Build:LoadSquid
-	// 4. Deploy:Helm
-	// 5. Deploy:Status
+	// 4. SquidHelm:Up
+	// 5. SquidHelm:Status
 
 	return fmt.Errorf("not implemented yet")
 }
