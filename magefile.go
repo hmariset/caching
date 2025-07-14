@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/konflux-ci/caching/internal"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 )
@@ -19,6 +20,8 @@ type Build mg.Namespace
 // Deploy manages deployment operations
 type Deploy mg.Namespace
 
+const clusterName = "caching"
+
 // Default target - shows available targets
 func Default() error {
 	return sh.Run("mage", "-l")
@@ -28,33 +31,140 @@ func Default() error {
 func (Kind) Up() error {
 	fmt.Println("🚀 Setting up kind cluster...")
 
-	// TODO: Implement kind cluster creation/connection logic
-	// - Check if 'caching' cluster exists
-	// - Create if doesn't exist, connect if exists
-	// - Export kubeconfig
+	// Check if cluster already exists
+	exists, err := internal.ClusterExists(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to check cluster existence: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	if exists {
+		fmt.Printf("✅ Cluster '%s' already exists\n", clusterName)
+	} else {
+		fmt.Printf("📦 Creating kind cluster '%s'...\n", clusterName)
+		err := internal.CreateCluster(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to create cluster: %w", err)
+		}
+		fmt.Printf("✅ Cluster '%s' created successfully\n", clusterName)
+	}
+
+	// Export kubeconfig
+	fmt.Printf("🔧 Exporting kubeconfig for cluster '%s'...\n", clusterName)
+	err = internal.ExportKubeconfig(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to export kubeconfig: %w", err)
+	}
+
+	fmt.Printf("✅ Kind cluster '%s' is ready!\n", clusterName)
+	return nil
+}
+
+// Kind:UpClean forces recreation of the kind cluster (deletes existing cluster and creates new one)
+func (Kind) UpClean() error {
+	fmt.Println("🚀 Setting up kind cluster (clean recreation)...")
+
+	// Check if cluster already exists
+	exists, err := internal.ClusterExists(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to check cluster existence: %w", err)
+	}
+
+	if exists {
+		fmt.Printf("🔄 Deleting existing cluster '%s'...\n", clusterName)
+		err := internal.DeleteCluster(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to delete existing cluster: %w", err)
+		}
+		fmt.Printf("✅ Cluster '%s' deleted successfully\n", clusterName)
+	}
+
+	// Create new cluster
+	fmt.Printf("📦 Creating kind cluster '%s'...\n", clusterName)
+	err = internal.CreateCluster(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to create cluster: %w", err)
+	}
+	fmt.Printf("✅ Cluster '%s' created successfully\n", clusterName)
+
+	// Export kubeconfig
+	fmt.Printf("🔧 Exporting kubeconfig for cluster '%s'...\n", clusterName)
+	err = internal.ExportKubeconfig(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to export kubeconfig: %w", err)
+	}
+
+	fmt.Printf("✅ Kind cluster '%s' is ready!\n", clusterName)
+	return nil
 }
 
 // Kind:Down tears down the kind cluster
 func (Kind) Down() error {
 	fmt.Println("🔥 Tearing down kind cluster...")
 
-	// TODO: Implement kind cluster teardown logic
-	// - Delete 'caching' cluster if it exists
+	// Check if cluster exists first
+	exists, err := internal.ClusterExists(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to check cluster existence: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	if !exists {
+		fmt.Printf("ℹ️  Cluster '%s' does not exist\n", clusterName)
+		return nil
+	}
+
+	// Delete the cluster
+	fmt.Printf("🗑️  Deleting kind cluster '%s'...\n", clusterName)
+	err = internal.DeleteCluster(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to delete cluster: %w", err)
+	}
+
+	fmt.Printf("✅ Cluster '%s' deleted successfully\n", clusterName)
+	return nil
 }
 
 // Kind:Status shows the status of the kind cluster
 func (Kind) Status() error {
 	fmt.Println("📊 Checking kind cluster status...")
 
-	// TODO: Implement kind cluster status check
-	// - Show if 'caching' cluster exists and is running
-	// - Show kubeconfig status
+	// Check if cluster exists
+	exists, err := internal.ClusterExists(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to check cluster existence: %w", err)
+	}
 
-	return fmt.Errorf("not implemented yet")
+	if !exists {
+		fmt.Printf("❌ Cluster '%s' does not exist\n", clusterName)
+		return nil
+	}
+
+	fmt.Printf("✅ Cluster '%s' exists\n", clusterName)
+
+	// Check kubeconfig
+	kubeconfigPath := os.Getenv("KUBECONFIG")
+	if kubeconfigPath == "" {
+		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
+	}
+
+	// Try to get cluster info
+	fmt.Printf("🔍 Checking cluster connectivity...\n")
+	output, err := internal.GetClusterInfo(clusterName)
+	if err != nil {
+		fmt.Printf("⚠️  Could not connect to cluster: %v\n", err)
+		fmt.Printf("💡 Try running 'mage kind:up' to ensure kubeconfig is exported\n")
+		return nil
+	}
+
+	fmt.Printf("✅ Cluster is accessible:\n%s\n", output)
+
+	// Get node status
+	fmt.Printf("🖥️  Node status:\n")
+	err = internal.GetNodeStatus(clusterName)
+	if err != nil {
+		fmt.Printf("⚠️  Could not get node status: %v\n", err)
+	}
+
+	return nil
 }
 
 // Build:Squid builds the Squid container image
@@ -105,7 +215,7 @@ func (Deploy) Status() error {
 func All() error {
 	fmt.Println("🎯 Running complete automation workflow...")
 
-	// TODO: Implement full workflow with proper error handling
+	// TODO: Implement full workflow with proper dependencies
 	// This will eventually call the tasks in proper order:
 	// 1. Kind:Up
 	// 2. Build:Squid
@@ -126,24 +236,4 @@ func Clean() error {
 	// - Clean up any temporary files
 
 	return fmt.Errorf("not implemented yet")
-}
-
-// checkRequiredTools verifies that required tools are available
-func checkRequiredTools() error {
-	tools := []string{"kind", "podman", "helm"}
-
-	for _, tool := range tools {
-		if err := sh.Run("which", tool); err != nil {
-			return fmt.Errorf("required tool not found: %s", tool)
-		}
-	}
-
-	return nil
-}
-
-// init performs initialization checks
-func init() {
-	if err := checkRequiredTools(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-	}
 }
