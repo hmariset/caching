@@ -13,17 +13,13 @@ RUN dnf -y makecache && \
     dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 
-# Install kind binary
+# Install kind, mage, ginkgo CLI, and dlv debugger 
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64 && \
     chmod +x ./kind && \
-    mv ./kind /usr/local/bin/kind
-
-# Install mage binary
-RUN GOBIN=/usr/local/bin go install github.com/magefile/mage@v1.15.0
-
-# Install ginkgo CLI and dlv debugger
-RUN GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest
-RUN GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
+    mv ./kind /usr/local/bin/kind && \
+    GOBIN=/usr/local/bin go install github.com/magefile/mage@v1.15.0 && \
+    GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
+    GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Create a non-root user 'vscode' to run as, and grant it passwordless sudo.
 ARG USERNAME=vscode
@@ -36,6 +32,9 @@ RUN groupadd --gid $USER_GID $USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
 # Add Go bin directory to the vscode user's PATH
+# Ignoring hadolint because in this case we don't want variables expanded during
+# the container build.
+# hadolint ignore=SC2016
 RUN echo 'export PATH="$PATH:$HOME/go/bin"' >> /home/$USERNAME/.bashrc
 
 # Switch to the non-root user
