@@ -21,6 +21,11 @@ RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64 && \
     GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
     GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
 
+# Install mirrord binary securely from GitHub releases (specific version)
+ARG MIRRORD_VERSION=3.150.0
+RUN curl -fsSL "https://github.com/metalbear-co/mirrord/releases/download/${MIRRORD_VERSION}/mirrord_linux_x86_64" -o /usr/local/bin/mirrord && \
+    chmod +x /usr/local/bin/mirrord
+
 # Create a non-root user 'vscode' to run as, and grant it passwordless sudo.
 ARG USERNAME=vscode
 ARG USER_UID=1000
