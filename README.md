@@ -4,6 +4,19 @@ This repository contains a Helm chart for deploying a Squid HTTP proxy server in
 
 ## Prerequisites
 
+Increase the `inotify` resource limits to avoid Kind issues related to
+[too many open files in](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files).
+To increase the limits temporarily, run the following commands:
+
+```bash
+sudo sysctl fs.inotify.max_user_watches=524288
+sudo sysctl fs.inotify.max_user_instances=512
+```
+
+When using Dev Containers, the automation will fetch those values, and if it's
+successful, it will verify them against the limits above and fail container
+initialization if either value is too low.
+
 ### Option 1: Manual Installation
 
 - [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/getting-started/installation)
