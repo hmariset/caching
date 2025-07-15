@@ -29,7 +29,7 @@ spec:
       
       # Run the compiled test binary
       echo "Running tests..."
-      cd /tests
+      cd /app/tests
       ./e2e/e2e.test -ginkgo.v
     env:
     - name: SQUID_NAMESPACE

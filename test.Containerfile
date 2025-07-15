@@ -26,16 +26,19 @@ ENV GOCACHE="/tmp/go-cache"
 # Install Ginkgo CLI (version-locked)
 RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.23.4
 
-# Create test directory structure
-WORKDIR /tests
+# Create working directory
+WORKDIR /app
 
-# Copy test source files and dependencies
-COPY tests/e2e/ ./e2e/
+# Copy module files first
 COPY go.mod go.sum ./
+
+# Copy test source files maintaining directory structure
+COPY tests/ ./tests/
 
 # Set up Go module and compile tests at build time
 RUN go mod download && \
     go mod tidy && \
+    cd tests && \
     ginkgo build ./e2e
 
 # Create a non-root user for running tests
@@ -43,4 +46,4 @@ RUN adduser --uid 1001 --gid 0 --shell /bin/bash --create-home testuser
 USER 1001
 
 # Default command runs the compiled test binary
-CMD ["./e2e/e2e.test", "-ginkgo.v"] 
+CMD ["./tests/e2e/e2e.test", "-ginkgo.v"] 
