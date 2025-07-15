@@ -136,6 +136,20 @@ installCertManagerComponents: true
 
 # Cert-manager and Trust-manager configuration
 # Based on https://cert-manager.io/docs/installation/helm/
+test:
+  enabled: true  # Enable helm test functionality
+  image:
+    repository: localhost/konflux-ci/squid-test  # Custom test image with UBI base
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
 cert-manager:
   enabled: true  # Set to true to enable cert-manager
   namespace: "cert-manager"  # Deploy to dedicated namespace

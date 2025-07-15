@@ -1,0 +1,43 @@
+{{- if .Values.test.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "squid.fullname" . }}-test"
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "squid.fullname" . }}-test
+  containers:
+  - name: ginkgo-test
+    image: "{{ .Values.test.image.repository }}:{{ .Values.test.image.tag }}"
+    imagePullPolicy: {{ .Values.test.image.pullPolicy | default "IfNotPresent" }}
+    command:
+    - /bin/bash
+    - -c
+    - |
+      set -e
+      echo "=== Starting Ginkgo E2E Tests ==="
+      echo "Target namespace: {{ .Values.namespace.name }}"
+      echo "Squid service: {{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
+      
+      # Run the compiled test binary
+      echo "Running tests..."
+      cd /tests
+      ./e2e/e2e.test -ginkgo.v
+    env:
+    - name: SQUID_NAMESPACE
+      value: "{{ .Values.namespace.name }}"
+    - name: SQUID_SERVICE_NAME
+      value: "{{ include "squid.fullname" . }}"
+    - name: SQUID_SERVICE_PORT
+      value: "{{ .Values.service.port }}"
+    resources:
+      {{- toYaml .Values.test.resources | nindent 6 }}
+{{- end }} 

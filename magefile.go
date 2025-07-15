@@ -26,6 +26,10 @@ const (
 	squidImageTag = "localhost/konflux-ci/squid:latest"
 	// SquidContainerfile is the path to the Containerfile for squid
 	squidContainerfile = "Containerfile"
+	// TestImageTag is the tag used for the test container image
+	testImageTag = "localhost/konflux-ci/squid-test:latest"
+	// TestContainerfile is the path to the Containerfile for tests
+	testContainerfile = "test.Containerfile"
 )
 
 // Default target - shows available targets
@@ -222,10 +226,52 @@ func (Build) LoadSquid() error {
 	return nil
 }
 
+// Build:TestImage builds the test container image
+func (Build) TestImage() error {
+	fmt.Println("🔨 Building test container image...")
+
+	// Build the test image using podman
+	fmt.Printf("📦 Building image with tag '%s'...\n", testImageTag)
+	err := sh.Run("podman", "build", "-t", testImageTag, "-f", testContainerfile, ".")
+	if err != nil {
+		return fmt.Errorf("failed to build test image: %w", err)
+	}
+
+	fmt.Printf("✅ Test image built successfully\n")
+
+	// Verify the image was built
+	fmt.Printf("🔍 Verifying image exists...\n")
+	err = sh.Run("podman", "images", testImageTag)
+	if err != nil {
+		return fmt.Errorf("failed to verify test image: %w", err)
+	}
+
+	fmt.Printf("✅ Test image '%s' is ready!\n", testImageTag)
+	return nil
+}
+
+// Build:LoadTestImage loads the test image into the kind cluster
+func (Build) LoadTestImage() error {
+	// Ensure dependencies are met
+	mg.Deps(Kind.Up, Build.TestImage)
+
+	fmt.Println("📦 Loading test image into kind cluster...")
+
+	// Load image into kind cluster using process substitution
+	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
+	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, testImageTag))
+	if err != nil {
+		return fmt.Errorf("failed to load test image into kind cluster: %w", err)
+	}
+
+	fmt.Printf("✅ Test image loaded successfully into kind cluster '%s'!\n", clusterName)
+	return nil
+}
+
 // SquidHelm:Up deploys the Squid Helm chart to the cluster
 func (SquidHelm) Up() error {
-	// Ensure dependencies are met
-	mg.Deps(Build.LoadSquid)
+	// Ensure dependencies are met (both squid and test images needed for helm tests)
+	mg.Deps(Build.LoadSquid, Build.LoadTestImage)
 
 	fmt.Println("⚓ Deploying Squid Helm chart...")
 
@@ -369,7 +415,7 @@ func All() error {
 	fmt.Println()
 
 	// SquidHelm.Up will automatically handle all dependencies:
-	// SquidHelm.Up -> Build.LoadSquid -> Kind.Up + Build.Squid
+	// SquidHelm.Up -> Build.LoadSquid + Build.LoadTestImage -> Kind.Up + Build.Squid + Build.TestImage
 	err := (SquidHelm{}).Up()
 	if err != nil {
 		return err
@@ -401,7 +447,12 @@ func Clean() error {
 	fmt.Printf("🗑️  Removing container images...\n")
 	err = sh.Run("podman", "rmi", squidImageTag)
 	if err != nil {
-		fmt.Printf("⚠️  Warning: Failed to remove container image: %v\n", err)
+		fmt.Printf("⚠️  Warning: Failed to remove squid image: %v\n", err)
+	}
+
+	err = sh.Run("podman", "rmi", testImageTag)
+	if err != nil {
+		fmt.Printf("⚠️  Warning: Failed to remove test image: %v\n", err)
 	}
 
 	fmt.Printf("✅ Resource cleanup completed!\n")

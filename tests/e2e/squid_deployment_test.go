@@ -116,7 +116,8 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		BeforeEach(func() {
 			var err error
-			labelSelector := "app.kubernetes.io/name=squid"
+			// Select only application pods, exclude test pods
+			labelSelector := "app.kubernetes.io/name=squid,app.kubernetes.io/component!=test"
 			pods, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})

@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
@@ -33,15 +34,23 @@ var _ = BeforeSuite(func() {
 	ctx = context.Background()
 
 	// Create Kubernetes client
-	var kubeconfig string
-	if os.Getenv("KUBECONFIG") != "" {
-		kubeconfig = os.Getenv("KUBECONFIG")
-	} else if home := homedir.HomeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
+	var config *rest.Config
+	var err error
+	
+	// Try in-cluster config first (when running in a pod)
+	config, err = rest.InClusterConfig()
+	if err != nil {
+		// Fall back to kubeconfig file (when running locally)
+		var kubeconfig string
+		if os.Getenv("KUBECONFIG") != "" {
+			kubeconfig = os.Getenv("KUBECONFIG")
+		} else if home := homedir.HomeDir(); home != "" {
+			kubeconfig = filepath.Join(home, ".kube", "config")
+		}
+		
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create kubeconfig from %s", kubeconfig)
 	}
-
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create kubeconfig from %s", kubeconfig)
 
 	clientset, err = kubernetes.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Kubernetes client")
