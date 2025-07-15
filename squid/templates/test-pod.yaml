@@ -38,6 +38,10 @@ spec:
       value: "{{ include "squid.fullname" . }}"
     - name: SQUID_SERVICE_PORT
       value: "{{ .Values.service.port }}"
+    - name: POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
 {{- end }} 

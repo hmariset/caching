@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,13 +31,26 @@ const (
 	interval       = 2 * time.Second
 )
 
+// getPodIP returns the current pod's IP address from downward API
+func getPodIP() (string, error) {
+	// Get pod IP from environment variable set by downward API
+	podIP := os.Getenv("POD_IP")
+	fmt.Printf("DEBUG: Pod IP from downward API: %s\n", podIP)
+
+	if podIP == "" {
+		return "", fmt.Errorf("POD_IP environment variable not set (requires downward API)")
+	}
+
+	return podIP, nil
+}
+
 var _ = BeforeSuite(func() {
 	ctx = context.Background()
 
 	// Create Kubernetes client
 	var config *rest.Config
 	var err error
-	
+
 	// Try in-cluster config first (when running in a pod)
 	config, err = rest.InClusterConfig()
 	if err != nil {
@@ -47,7 +61,7 @@ var _ = BeforeSuite(func() {
 		} else if home := homedir.HomeDir(); home != "" {
 			kubeconfig = filepath.Join(home, ".kube", "config")
 		}
-		
+
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		Expect(err).NotTo(HaveOccurred(), "Failed to create kubeconfig from %s", kubeconfig)
 	}
