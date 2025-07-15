@@ -1,0 +1,29 @@
+---
+description: Jira TODO Workflow, to apply when user asks to create TODO list based on current branch and Jira issue
+alwaysApply: false
+---
+# Jira TODO Workflow
+
+**When to apply**: When user asks to create TODO list based on current branch and Jira issue
+
+## Single Command Workflow
+
+```bash
+JIRA_ID=$(git branch --show-current | grep -o 'KFLUXVNGD-[0-9]*'); echo "=== BRANCH: $(git branch --show-current) | JIRA: $JIRA_ID ==="; if [ -f .jira-token ] && [ -n "$JIRA_ID" ]; then TOKEN=$(cat .jira-token); curl -s -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" "https://issues.redhat.com/rest/api/2/issue/$JIRA_ID" --connect-timeout 10 --max-time 30 | jq -r '"=== JIRA DETAILS ===\nSummary: " + .fields.summary + "\nType: " + .fields.issuetype.name + "\nStatus: " + .fields.status.name + "\nDescription:\n" + (.fields.description // "No description")'; echo "=== RECENT COMMITS ==="; git log --oneline --no-merges | head -5; else echo "=== CANNOT CREATE TODO LIST ==="; echo "Missing .jira-token file or invalid JIRA ID in branch name"; echo "Please provide requirements manually or fix Jira access"; exit 1; fi
+```
+
+## Usage
+- Run this single command to get Jira details + recent commits
+- **On success**: Create `todo_write` based on Jira acceptance criteria vs completed commits  
+- **On failure**: Command exits with error - ask user to provide requirements manually
+
+## Key Principles
+- **Minimal shell commands** - combine operations where possible
+- **Fast failure** - if no .jira-token, work with git history only  
+- **Context preservation** - use concise outputs, avoid verbose responses
+- **Accuracy over assumptions** - parse actual requirements, not commit patterns
+
+## Prerequisites
+- `jq` installed in container (for JSON parsing)
+- `.jira-token` file (optional, graceful fallback)
+- Valid Jira issue ID in branch name format: `KFLUXVNGD-###`

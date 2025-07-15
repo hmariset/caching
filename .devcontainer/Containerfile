@@ -6,7 +6,7 @@ RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
     echo -e "minrate=100\\ntimeout=60\\n" >> /etc/dnf/dnf.conf
 
 # Install dependencies for the dev environment
-ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng curl helm kubernetes1.33-client"
+ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng curl helm kubernetes1.33-client jq"
 RUN dnf -y makecache && \
     dnf -y update && \
     dnf -y install $INSTALL_RPMS --exclude container-selinux && \
