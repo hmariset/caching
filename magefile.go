@@ -421,11 +421,21 @@ func All() error {
 		return err
 	}
 
+	// Run helm tests to validate the deployment
+	fmt.Println()
+	fmt.Println("🧪 Running helm tests to validate deployment...")
+	err = sh.Run("helm", "test", "squid")
+	if err != nil {
+		return fmt.Errorf("helm tests failed: %w", err)
+	}
+	fmt.Println("✅ All helm tests passed!")
+
 	fmt.Println()
 	fmt.Println("🎉 Complete automation workflow finished successfully!")
 	fmt.Println("Your local dev/test environment is ready:")
 	fmt.Println("  • Kind cluster: 'caching'")
 	fmt.Println("  • Squid proxy: http://squid.proxy.svc.cluster.local:3128")
+	fmt.Println("  • Helm tests: ✅ All passing")
 	fmt.Println("  • Ready for development and testing!")
 	return nil
 }
