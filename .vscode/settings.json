@@ -26,5 +26,23 @@
         ],
         "editor.wordWrap": "wordWrapColumn",
         "editor.wordWrapColumn": 72
-    }
+    },
+    "go.testFlags": [
+        "-v"
+    ],
+    "go.testTimeout": "300s",
+    "go.testEnvVars": {
+        "CGO_ENABLED": "0"
+    },
+    "go.testOnSave": false,
+    "go.coverOnSave": false,
+    "go.coverOnSingleTest": false,
+    "go.coverOnSingleTestFile": false,
+    "go.coverOnTestPackage": false,
+    "go.testExplorer.enable": true,
+    "go.testExplorer.showDynamicSubtestsInEditor": true,
+    "go.testExplorer.packageDisplayMode": "nested",
+    "go.generateTestsFlags": [
+        "-only"
+    ]
 }

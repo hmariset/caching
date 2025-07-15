@@ -1,0 +1,185 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Setup Test Environment",
+            "type": "shell",
+            "command": "mage",
+            "args": [
+                "all"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Check Test Environment Status",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "mage kind:status && mage squidHelm:status"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean Test Environment",
+            "type": "shell",
+            "command": "mage",
+            "args": [
+                "clean"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Ginkgo E2E Tests",
+            "type": "shell",
+            "command": "ginkgo",
+            "args": [
+                "-v",
+                "./tests/e2e"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "dependsOn": "Setup Test Environment",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Ginkgo Tests (Current Directory)",
+            "type": "shell",
+            "command": "ginkgo",
+            "args": [
+                "-v"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Ginkgo Tests with Coverage",
+            "type": "shell",
+            "command": "ginkgo",
+            "args": [
+                "-v",
+                "--cover",
+                "--coverprofile=coverage.out",
+                "./tests/e2e"
+            ],
+            "group": "test",
+            "dependsOn": "Setup Test Environment",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Focused Ginkgo Tests",
+            "type": "shell",
+            "command": "ginkgo",
+            "args": [
+                "-v",
+                "--focus=${input:testFocus}",
+                "./tests/e2e"
+            ],
+            "group": "test",
+            "dependsOn": "Setup Test Environment",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate Ginkgo Test File",
+            "type": "shell",
+            "command": "ginkgo",
+            "args": [
+                "generate",
+                "${input:testFileName}"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFocus",
+            "description": "Focus pattern for Ginkgo tests (regex)",
+            "default": "",
+            "type": "promptString"
+        },
+        {
+            "id": "testFileName",
+            "description": "Name for new test file (without _test.go suffix)",
+            "default": "example",
+            "type": "promptString"
+        }
+    ]
+}

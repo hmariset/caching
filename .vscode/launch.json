@@ -1,0 +1,60 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Ginkgo Tests (Current File)",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${fileDirname}",
+            "args": [
+                "-ginkgo.v"
+            ],
+            "env": {
+                "CGO_ENABLED": "0"
+            },
+            "console": "integratedTerminal",
+            "showLog": true
+        },
+        {
+            "name": "Debug Ginkgo E2E Tests",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/tests/e2e",
+            "args": [
+                "-ginkgo.v",
+                "-ginkgo.focus=${input:focusSpec}"
+            ],
+            "env": {
+                "CGO_ENABLED": "0"
+            },
+            "console": "integratedTerminal",
+            "showLog": true
+        },
+        {
+            "name": "Run Ginkgo Tests with Coverage",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${fileDirname}",
+            "args": [
+                "-ginkgo.v",
+                "-coverprofile=coverage.out"
+            ],
+            "env": {
+                "CGO_ENABLED": "0"
+            },
+            "console": "integratedTerminal",
+            "showLog": true
+        }
+    ],
+    "inputs": [
+        {
+            "id": "focusSpec",
+            "description": "Focus on specific test spec (leave empty for all tests)",
+            "default": "",
+            "type": "promptString"
+        }
+    ]
+}
