@@ -1,0 +1,21 @@
+{{- if (index .Values "selfsigned-bundle").enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.namespace.name }}-cert
+  namespace: {{ .Values.namespace.name }}
+spec:
+  isCA: true
+  subject:
+    organizations:
+      - konflux
+  dnsNames:
+  - localhost
+  - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc
+  - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc.cluster.local
+  - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc.cluster.local
+  issuerRef:
+    kind: ClusterIssuer
+    name: ca-issuer
+  secretName: {{ .Values.namespace.name }}-tls
+{{- end }}

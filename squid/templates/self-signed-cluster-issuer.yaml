@@ -1,0 +1,39 @@
+{{- if (index .Values "selfsigned-bundle").enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: self-signed-cluster-issuer
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+  namespace: {{ (index .Values "cert-manager").namespace }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  secretName: root-secret
+  commonName: selfsigned-ca
+  isCA: true
+  privateKey:
+    algorithm: ECDSA
+    size: 256  
+  issuerRef:
+    name: self-signed-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: root-secret
+{{- end }}

@@ -8,10 +8,11 @@ metadata:
 spec:
   sources:
   - secret:
-      name: "{{ .Values.namespace.name }}-tls"
+      name: "root-secret"
       key: "ca.crt"
   - useDefaultCAs: true
   target:
     configMap:
       key: "ca-bundle.crt"
+    namespaceSelector: {}      
 {{- end }} 
