@@ -20,6 +20,9 @@ type Build mg.Namespace
 // SquidHelm manages squid helm chart operations
 type SquidHelm mg.Namespace
 
+// Test manages test execution operations
+type Test mg.Namespace
+
 const (
 	clusterName = "caching"
 	// SquidImageTag is the tag used for the squid container image
@@ -467,4 +470,43 @@ func Clean() error {
 
 	fmt.Printf("✅ Resource cleanup completed!\n")
 	return nil
+}
+
+// Test:Cluster runs tests with cluster network access via mirrord
+func (Test) Cluster() error {
+	// Ensure cluster and deployment are ready (includes mirrord infrastructure)
+	mg.Deps(SquidHelm{}.Up)
+
+	fmt.Println("🔮 Running tests with cluster network access...")
+	fmt.Println("Tests run as if inside the cluster using mirrord")
+	fmt.Println("This provides the most realistic testing environment")
+
+	// Check if mirrord is available
+	err := sh.Run("which", "mirrord")
+	if err != nil {
+		return fmt.Errorf("mirrord not found in PATH - ensure it's installed: %w", err)
+	}
+
+	// Verify mirrord target pod is ready (deployed by Helm chart)
+	fmt.Println("⏳ Waiting for mirrord target pod to be ready...")
+	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", "proxy", "--timeout=60s")
+	if err != nil {
+		return fmt.Errorf("mirrord target pod not ready - check Helm deployment: %w", err)
+	}
+
+	// Build test binary with ginkgo for better output
+	fmt.Println("🔨 Building test binary with ginkgo...")
+	err = sh.RunWith(map[string]string{
+		"CGO_ENABLED": "1",
+	}, "ginkgo", "build", "./tests/e2e/")
+	if err != nil {
+		return fmt.Errorf("failed to build test binary with ginkgo: %w", err)
+	}
+
+	// Run tests with mirrord using ginkgo binary
+	fmt.Println("🚀 Running tests with mirrord connection stealing...")
+	return sh.RunWithV(map[string]string{
+		"CGO_ENABLED": "1",
+	}, "mirrord", "exec", "--config-file", ".mirrord/mirrord.json", "--",
+		"./tests/e2e/e2e.test", "-ginkgo.v")
 }

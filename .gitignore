@@ -42,3 +42,7 @@ go.work.sum
 
 #charts
 squid/charts/
+
+# binaries
+/testserver
+tests/e2e/squid_test

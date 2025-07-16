@@ -137,9 +137,9 @@ installCertManagerComponents: true
 # Cert-manager and Trust-manager configuration
 # Based on https://cert-manager.io/docs/installation/helm/
 test:
-  enabled: true  # Enable helm test functionality
+  enabled: true # Enable helm test functionality
   image:
-    repository: localhost/konflux-ci/squid-test  # Custom test image with UBI base
+    repository: localhost/konflux-ci/squid-test # Custom test image with UBI base
     tag: "latest"
     pullPolicy: IfNotPresent
   resources:
@@ -150,23 +150,49 @@ test:
       cpu: 500m
       memory: 1Gi
 
+# mirrord configuration for development and CI testing
+# The mirrord target pod provides connection stealing capabilities for local development
+mirrord:
+  enabled: true # Enable mirrord target pod (disable in production)
+  targetPod:
+    name: "mirrord-test-target" # Name of the mirrord target pod
+    image:
+      repository: localhost/konflux-ci/squid-test # Same image as tests
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    ports:
+      http: 8080 # Standard HTTP port
+      testServer: 9090 # Test server port for connection stealing
+    env:
+      testServerPort: 9090 # TEST_SERVER_PORT environment variable
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  # NOTE: RBAC is shared with test infrastructure
+  # When mirrord.enabled=true, test RBAC becomes persistent (no helm hooks)
+  # When mirrord.enabled=false, test RBAC uses hooks for cleanup
+
 cert-manager:
-  enabled: true  # Set to true to enable cert-manager
-  namespace: "cert-manager"  # Deploy to dedicated namespace
-  installCRDs: false  # Install cert-manager Custom Resource Definitions
+  enabled: true # Set to true to enable cert-manager
+  namespace: "cert-manager" # Deploy to dedicated namespace
+  installCRDs: false # Install cert-manager Custom Resource Definitions
   global:
     leaderElection:
-      namespace: "cert-manager"  # Namespace for leader election
+      namespace: "cert-manager" # Namespace for leader election
     podSecurityPolicy:
-      enabled: false  # Disable Pod Security Policy
+      enabled: false # Disable Pod Security Policy
     rbac:
-      create: true  # Create RBAC resources
+      create: true # Create RBAC resources
     serviceAccount:
-      create: true  # Create service accounts
+      create: true # Create service accounts
       name: ""
       annotations: {}
       automountServiceAccountToken: true
-  replicaCount: 1  
+  replicaCount: 1
   image:
     repository: quay.io/jetstack/cert-manager-controller
     tag: v1.18.2
@@ -178,7 +204,7 @@ cert-manager:
       tag: v1.18.2
       pullPolicy: IfNotPresent
   cainjector:
-    enabled: true  # Enable the CA injector component
+    enabled: true # Enable the CA injector component
     replicaCount: 1
     image:
       repository: quay.io/jetstack/cert-manager-cainjector

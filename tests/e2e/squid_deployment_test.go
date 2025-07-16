@@ -1,8 +1,12 @@
 package e2e_test
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/konflux-ci/caching/tests/testhelpers"
@@ -12,6 +16,36 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// generateCacheBuster creates a unique string for cache-busting that's safe for parallel test execution
+func generateCacheBuster(testName string) string {
+	// Generate 8 random bytes for true uniqueness across containers
+	randomBytes := make([]byte, 8)
+	if _, err := rand.Read(randomBytes); err != nil {
+		// Fallback to timestamp if crypto/rand fails
+		randomBytes = []byte(fmt.Sprintf("%016x", time.Now().UnixNano()))
+	}
+	randomHex := hex.EncodeToString(randomBytes)
+
+	// Get hostname (unique per container/pod)
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+
+	// Combine multiple sources of uniqueness:
+	// - Test name for context
+	// - Current nanosecond timestamp
+	// - Container hostname (unique per pod)
+	// - Cryptographically random bytes
+	// - Ginkgo's random seed
+	return fmt.Sprintf("test=%s&t=%d&host=%s&rand=%s&seed=%d",
+		testName,
+		time.Now().UnixNano(),
+		hostname,
+		randomHex,
+		GinkgoRandomSeed())
+}
 
 var _ = Describe("Squid Helm Chart Deployment", func() {
 
@@ -119,8 +153,8 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		BeforeEach(func() {
 			var err error
-			// Select only application pods, exclude test pods
-			labelSelector := "app.kubernetes.io/name=squid,app.kubernetes.io/component!=test"
+			// Select only squid deployment pods (exclude test and mirrord target pods)
+			labelSelector := "app.kubernetes.io/name=squid,app.kubernetes.io/component notin (test,mirrord-target)"
 			pods, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
@@ -212,8 +246,16 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			podIP, err := getPodIP()
 			Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
 
+			// Get test server port from environment, fallback to 0 (random port)
+			testPort := 0
+			if testPortStr := os.Getenv("TEST_SERVER_PORT"); testPortStr != "" {
+				if port, parseErr := strconv.Atoi(testPortStr); parseErr == nil {
+					testPort = port
+				}
+			}
+
 			// Create test server using helpers
-			testServer, err = testhelpers.NewProxyTestServer("Hello from test server", podIP)
+			testServer, err = testhelpers.NewProxyTestServer("Hello from test server", podIP, testPort)
 			Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
 
 			// Create HTTP client configured for Squid proxy using helpers
@@ -228,15 +270,20 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should cache HTTP responses and serve subsequent requests from cache", func() {
+			// Add cache-busting parameter to ensure this test gets fresh responses
+			// and doesn't interfere with cache pollution from other tests
+			// Use multiple entropy sources for parallel test safety
+			testURL := testServer.URL + "?" + generateCacheBuster("cache-basic")
+
 			By("Making the first HTTP request through Squid proxy")
-			resp1, body1, err := testhelpers.MakeProxyRequest(client, testServer.URL)
+			resp1, body1, err := testhelpers.MakeProxyRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "First request should succeed")
 			defer resp1.Body.Close()
 
 			// Debug: print the actual response for troubleshooting
 			fmt.Printf("DEBUG: Response status: %s\n", resp1.Status)
 			fmt.Printf("DEBUG: Response body: %s\n", string(body1))
-			fmt.Printf("DEBUG: Test server URL: %s\n", testServer.URL)
+			fmt.Printf("DEBUG: Test server URL: %s\n", testURL)
 
 			response1, err := testhelpers.ParseTestServerResponse(body1)
 			Expect(err).NotTo(HaveOccurred(), "Should parse first response JSON")
@@ -248,7 +295,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			// Wait a moment to ensure any timing-related caching issues are avoided
 			time.Sleep(100 * time.Millisecond)
 
-			resp2, body2, err := testhelpers.MakeProxyRequest(client, testServer.URL)
+			resp2, body2, err := testhelpers.MakeProxyRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Second request should succeed")
 			defer resp2.Body.Close()
 
@@ -273,15 +320,21 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		It("should handle different URLs independently", func() {
 			By("Making requests to different endpoints")
 
+			// Add cache-busting to prevent interference from other tests
+			// Use multiple entropy sources for parallel test safety
+			baseBuster := generateCacheBuster("urls")
+
 			// First URL
-			resp1, _, err := testhelpers.MakeProxyRequest(client, testServer.URL+"/endpoint1")
+			url1 := testServer.URL + "/endpoint1?" + baseBuster + "&endpoint=1"
+			resp1, _, err := testhelpers.MakeProxyRequest(client, url1)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp1.Body.Close()
 
 			initialCount := testServer.GetRequestCount()
 
 			// Second URL (different from first)
-			resp2, _, err := testhelpers.MakeProxyRequest(client, testServer.URL+"/endpoint2")
+			url2 := testServer.URL + "/endpoint2?" + baseBuster + "&endpoint=2"
+			resp2, _, err := testhelpers.MakeProxyRequest(client, url2)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp2.Body.Close()
 

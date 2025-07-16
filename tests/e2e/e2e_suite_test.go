@@ -31,9 +31,10 @@ const (
 	interval       = 2 * time.Second
 )
 
-// getPodIP returns the current pod's IP address from downward API
+// getPodIP returns the pod IP address from downward API
 func getPodIP() (string, error) {
 	// Get pod IP from environment variable set by downward API
+	// This works both in real pods and when mirrored via mirrord
 	podIP := os.Getenv("POD_IP")
 	fmt.Printf("DEBUG: Pod IP from downward API: %s\n", podIP)
 
@@ -70,7 +71,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Kubernetes client")
 
 	// Verify we can connect to the cluster
-	_, err = clientset.CoreV1().Namespaces().Get(ctx, "default", metav1.GetOptions{})
+	_, err = clientset.CoreV1().Pods("proxy").List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")
 })
 

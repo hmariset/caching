@@ -1,11 +1,19 @@
 {
-    "target": "targetless",
+    "target": {
+        "path": "pod/mirrord-test-target",
+        "namespace": "proxy"
+    },
     "feature": {
         "network": {
-            "incoming": "mirror",
+            "incoming": {
+                "mode": "steal",
+                "http_filter": {
+                    "path_filter": ".*\\?.*"
+                }
+            },
             "outgoing": true
         },
-        "fs": "local",
+        "fs": "read",
         "env": true
     }
 }

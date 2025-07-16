@@ -1,0 +1,58 @@
+{{- if .Values.mirrord.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Values.mirrord.targetPod.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    # Use different app name to avoid service selector conflicts
+    app.kubernetes.io/name: mirrord-target
+    app.kubernetes.io/instance: {{ include "squid.fullname" . }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: mirrord-target
+    app: {{ .Values.mirrord.targetPod.name }}
+    helm.sh/chart: {{ include "squid.chart" . }}
+spec:
+  serviceAccountName: {{ include "squid.fullname" . }}-test
+  restartPolicy: Always  # Keep the target pod running for development
+  containers:
+    - name: testserver
+      image: "{{ .Values.mirrord.targetPod.image.repository }}:{{ .Values.mirrord.targetPod.image.tag }}"
+      imagePullPolicy: {{ .Values.mirrord.targetPod.image.pullPolicy | default "IfNotPresent" }}
+      command: ["/app/testserver"]
+      ports:
+        - containerPort: {{ .Values.mirrord.targetPod.ports.http }}
+          name: http
+        - containerPort: {{ .Values.mirrord.targetPod.ports.testServer }}
+          name: testserver
+      env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: TEST_SERVER_PORT
+          value: "{{ .Values.mirrord.targetPod.env.testServerPort }}"
+      resources:
+        {{- toYaml .Values.mirrord.targetPod.resources | nindent 8 }}
+      readinessProbe:
+        httpGet:
+          path: /
+          port: {{ .Values.mirrord.targetPod.ports.testServer }}
+          scheme: HTTP
+        initialDelaySeconds: 2
+        periodSeconds: 3
+        timeoutSeconds: 2
+        successThreshold: 1
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /
+          port: {{ .Values.mirrord.targetPod.ports.testServer }}
+          scheme: HTTP
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 2
+        successThreshold: 1
+        failureThreshold: 3
+{{- end }} 

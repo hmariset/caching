@@ -31,7 +31,7 @@ type ProxyTestServer struct {
 }
 
 // NewProxyTestServer creates a new test server configured for cross-pod communication
-func NewProxyTestServer(message string, podIP string) (*ProxyTestServer, error) {
+func NewProxyTestServer(message string, podIP string, port int) (*ProxyTestServer, error) {
 	var requestCount int32
 
 	// Create HTTP server with request tracking
@@ -54,17 +54,17 @@ func NewProxyTestServer(message string, podIP string) (*ProxyTestServer, error) 
 		w.Write(jsonResponse)
 	}))
 
-	// Configure server to listen on all interfaces (required for cross-pod communication)
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	// Configure server to listen on all interfaces with the specified port
+	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create listener: %w", err)
+		return nil, fmt.Errorf("failed to create listener on port %d: %w", port, err)
 	}
 	server.Listener = listener
 	server.Start()
 
-	// Construct URL using pod IP instead of localhost
-	_, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	serverURL := fmt.Sprintf("http://%s:%s", podIP, port)
+	// Get the actual port that was assigned (important when port=0 for random port)
+	_, actualPortStr, _ := net.SplitHostPort(server.Listener.Addr().String())
+	serverURL := fmt.Sprintf("http://%s:%s", podIP, actualPortStr)
 
 	return &ProxyTestServer{
 		Server:       server,

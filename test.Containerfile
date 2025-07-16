@@ -35,11 +35,12 @@ COPY go.mod go.sum ./
 # Copy test source files maintaining directory structure
 COPY tests/ ./tests/
 
-# Set up Go module and compile tests at build time
+# Set up Go module and compile tests and testserver at build time
 RUN go mod download && \
     go mod tidy && \
     cd tests && \
-    ginkgo build ./e2e
+    ginkgo build ./e2e && \
+    CGO_ENABLED=1 go build -o /app/testserver ./testserver
 
 # Create a non-root user for running tests
 RUN adduser --uid 1001 --gid 0 --shell /bin/bash --create-home testuser
