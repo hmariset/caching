@@ -25,6 +25,7 @@ initialization if either value is too low.
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [Helm](https://helm.sh/docs/intro/install/) v3.x
 - [Mage](https://magefile.org/) (for automation - `go install github.com/magefile/mage@latest`)
+- [mirrord](https://mirrord.dev/docs/overview/quick-start/) (for local development with cluster network access - optional but recommended)
 
 ### Option 2: Development Container (Automated)
 
@@ -89,6 +90,9 @@ mage squidHelm:status # Check deployment status
 mage squidHelm:down   # Remove deployment
 mage squidHelm:upClean # Force redeploy
 
+# Testing
+mage test:cluster     # Run tests with mirrord cluster networking
+
 # Complete cleanup
 mage clean           # Remove everything (cluster, images, etc.)
 ```
@@ -100,43 +104,9 @@ mage clean           # Remove everything (cluster, images, etc.)
 mage -l
 ```
 
-## Working with Existing kind Clusters
-
-If you're using the dev container and already have a kind cluster running on your host system, you'll need to configure kubectl access from within the container:
-
-### Check for Existing Clusters
-
-```bash
-# List existing kind clusters (this works from within the dev container)
-kind get clusters
-```
-
-### Configure kubectl Access
-
-If you see an existing cluster (e.g., `kind`), you need to update the kubeconfig:
-
-```bash
-# Export the kubeconfig for your existing cluster
-kind export kubeconfig --name kind
-
-# Verify access
-kubectl cluster-info --context kind-kind
-kubectl get nodes
-```
-
-### Alternative: Create a New Cluster
-
-If you prefer to start fresh or don't have an existing cluster:
-
-```bash
-# Create a new kind cluster
-kind create cluster --name kind
-
-# The kubeconfig will be automatically configured
-kubectl cluster-info
-```
-
 ## Quick Start
+
+> **Note**: The automation uses a kind cluster named `caching` for consistency and isolation. Manual setup examples below use the same naming for consistency.
 
 ### Automated Setup (Recommended)
 
@@ -157,20 +127,20 @@ If you prefer manual control or want to understand the individual steps:
 
 ```bash
 # Create a new kind cluster (or use: mage kind:up)
-kind create cluster --name kind
+kind create cluster --name caching
 
 # Verify the cluster is running
-kubectl cluster-info --context kind-kind
+kubectl cluster-info --context kind-caching
 ```
 
 #### 2. Build and Load the Squid Container Image
 
 ```bash
 # Build the container image (or use: mage build:squid)
-podman build -t konflux-ci/squid -f Containerfile .
+podman build -t localhost/konflux-ci/squid:latest -f Containerfile .
 
 # Load the image into kind (or use: mage build:loadSquid)
-kind load image-archive --name kind <(podman save localhost/konflux-ci/squid:latest)
+kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:latest)
 ```
 
 #### 3. Deploy Squid with Helm
@@ -243,6 +213,222 @@ kubectl --namespace proxy port-forward $POD_NAME 3128:3128
 curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 ```
 
+## Testing
+
+This repository includes comprehensive end-to-end tests to validate the Squid proxy deployment and HTTP caching functionality. The test suite uses [Ginkgo](https://onsi.github.io/ginkgo/) for behavior-driven testing and [mirrord](https://mirrord.dev/) for local development with cluster network access.
+
+### Quick Start - Run All Tests
+
+```bash
+# Complete test setup and execution (recommended)
+mage all
+
+# Or run tests manually after setup
+mage test:cluster
+```
+
+### Test Architecture
+
+The testing infrastructure includes:
+
+- **E2E Tests** (`tests/e2e/`): Comprehensive deployment and HTTP caching validation
+- **Test Helpers** (`tests/testhelpers/`): Reusable components for proxy testing
+- **Test Server** (`tests/testserver/`): In-process HTTP server for caching validation
+- **Helm Tests**: Integrated testing via `helm test` command (most realistic - runs in cluster pods)
+- **Mirrord Integration**: Local development testing with cluster network access
+
+### Test Execution Options
+
+#### 1. Automated Testing (Recommended)
+
+The complete automation includes test execution:
+
+```bash
+# Set up environment and run all tests
+mage all
+
+# This will:
+# - Create kind cluster and deploy Squid
+# - Run helm tests to validate deployment
+# - Verify HTTP caching functionality
+# - Show comprehensive results
+```
+
+#### 2. Local Development Testing with Mirrord
+
+For local development and debugging, use mirrord to run tests with cluster network access:
+
+```bash
+# Run tests locally with cluster network access
+mage test:cluster
+
+# This uses mirrord to "steal" network connections from a target pod,
+# allowing local debugging without rebuilding test containers
+```
+
+#### 3. Manual Test Execution
+
+```bash
+# Set up test environment
+mage squidHelm:up
+
+# Run tests with mirrord (for local development)
+mage test:cluster
+
+# Run helm tests directly (most realistic - runs in cluster pods)
+helm test squid
+
+# Note: Running ginkgo directly without mirrord will fail on HTTP caching tests
+# since they require cluster network access
+
+# Clean up
+mage clean
+```
+
+### VS Code Integration
+
+The repository includes complete VS Code configuration for Ginkgo testing:
+
+#### Debug Configurations
+
+Use VS Code's debug panel to run tests with breakpoints:
+
+1. **Debug Ginkgo E2E Tests**: Run all E2E tests with debugging
+2. **Debug Ginkgo Tests (Current File)**: Debug tests in the currently open file
+3. **Run Ginkgo Tests with Coverage**: Generate test coverage reports
+
+#### Tasks and Commands
+
+Available VS Code tasks (Ctrl+Shift+P → "Tasks: Run Task"):
+
+- **Setup Test Environment**: Runs `mage all` to prepare everything
+- **Run Ginkgo E2E Tests**: Execute the full test suite
+- **Clean Test Environment**: Clean up all resources
+- **Run Focused Ginkgo Tests**: Run specific test patterns
+
+#### Quick Commands
+
+```bash
+# Run tests from VS Code terminal (requires mirrord)
+mage test:cluster
+
+# Run tests with specific focus patterns
+mage test:cluster  # Then edit .mirrord/mirrord.json to focus on specific tests
+
+# Run helm tests only (deployment validation)
+helm test squid
+
+# Note: Direct ginkgo commands require mirrord setup and cluster network access
+```
+
+### Test Scenarios Covered
+
+#### Deployment Validation
+- ✅ Namespace creation and configuration
+- ✅ Deployment status and readiness
+- ✅ Service configuration and endpoints
+- ✅ Pod health and security context
+- ✅ ConfigMap mounting and content
+
+#### HTTP Caching Functionality
+- ✅ **Round-trip caching test**: Validates that first request hits server, second serves from cache
+- ✅ **Cache headers validation**: Ensures proper cache-control headers
+- ✅ **Multi-URL independence**: Different URLs cached separately
+- ✅ **Cross-pod communication**: Tests work across cluster network boundaries
+
+#### Infrastructure Testing
+- ✅ **Mirrord target pod**: Validates mirrord infrastructure deployment
+- ✅ **Service discovery**: Tests proxy resolution via DNS
+- ✅ **Network connectivity**: End-to-end network path validation
+
+### Test Configuration
+
+#### Environment Variables
+
+The tests use these environment variables (automatically configured):
+
+```bash
+SQUID_NAMESPACE=proxy              # Target namespace
+SQUID_SERVICE_NAME=squid          # Service name
+SQUID_SERVICE_PORT=3128           # Proxy port
+POD_IP=<dynamic>                  # Pod IP from downward API
+TEST_SERVER_PORT=9090             # Test server port
+```
+
+#### Mirrord Configuration
+
+Testing uses mirrord in "targetless" mode with the configuration in `.mirrord/mirrord.json`:
+
+```json
+{
+    "target": {
+        "path": "pod/mirrord-test-target",
+        "namespace": "proxy"
+    },
+    "feature": {
+        "network": {
+            "incoming": {
+                "mode": "steal",
+                "http_filter": {
+                    "path_filter": ".*\\?.*"
+                }
+            }
+        }
+    }
+}
+```
+
+This configuration allows tests to:
+- "Steal" HTTP connections from the target pod
+- Access cluster networking from your local development environment
+- Debug and set breakpoints without rebuilding test containers
+
+
+
+### Contributing to Tests
+
+When adding new tests:
+
+1. **Use test helpers**: Leverage `tests/testhelpers/` for common operations
+2. **Follow Ginkgo patterns**: Use `Describe`, `Context`, `It` for clear test structure
+3. **Add cache-busting**: Use unique URLs to prevent test interference
+4. **Verify cleanup**: Ensure tests clean up resources properly
+5. **Update VS Code config**: Add debug configurations for new test files
+
+### Performance and Reliability
+
+- **Parallel execution**: Tests are designed to run safely in parallel
+- **Cache isolation**: Each test uses unique URLs to prevent cache pollution
+- **Resource efficiency**: Minimal resource requirements for test pods
+- **Fast feedback**: Test execution typically completes in under 2 minutes
+
+The testing infrastructure provides confidence in deployment correctness and HTTP caching functionality. Helm tests provide the most realistic validation by running in actual cluster pods, while mirrord enables efficient local development and debugging.
+
+### Testing Examples
+
+Here are common testing workflows:
+
+```bash
+# Full end-to-end testing (recommended for CI/verification)
+mage all  # Sets up everything and runs helm tests
+
+# Development workflow - test changes locally
+mage squidHelm:up      # Deploy your changes
+mage test:cluster      # Run tests with debugging capability
+# Make code changes, then rerun tests without rebuilding containers
+
+# Quick validation after changes
+helm test squid        # Fast deployment validation
+
+# Debugging test failures
+mage squidHelm:status  # Check deployment health
+kubectl logs -n proxy deployment/squid  # Check squid logs
+kubectl get pods -n proxy  # Check all pod states
+
+# Clean slate testing
+mage clean && mage all  # Remove everything and start fresh
+```
+
 ## Configuration
 
 ### Squid Configuration
@@ -287,12 +473,12 @@ ERROR: failed to create cluster: node(s) already exist for a cluster with the na
 **Solution**: Either use the existing cluster or delete it first:
 ```bash
 # Option 1: Use existing cluster (recommended for dev container users)
-kind export kubeconfig --name kind
-kubectl cluster-info --context kind-kind
+kind export kubeconfig --name caching
+kubectl cluster-info --context kind-caching
 
-# Option 2: Delete and recreate
-kind delete cluster --name kind
-kind create cluster --name kind
+# Option 2: Delete and recreate  
+kind delete cluster --name caching
+kind create cluster --name caching
 ```
 
 #### 2. kubectl Access Issues (Dev Container)
@@ -308,10 +494,10 @@ kubectl config current-context
 kubectl config get-contexts
 
 # Export kubeconfig for existing cluster
-kind export kubeconfig --name kind
+kind export kubeconfig --name caching
 
 # Switch to the kind context if needed
-kubectl config use-context kind-kind
+kubectl config use-context kind-caching
 
 # Test connectivity
 kubectl get pods --all-namespaces
@@ -324,10 +510,10 @@ kubectl get pods --all-namespaces
 **Solution**: Ensure the image is loaded into kind:
 ```bash
 # Check if image is loaded
-docker exec -it kind-control-plane crictl images | grep squid
+docker exec -it caching-control-plane crictl images | grep squid
 
 # If missing, reload the image
-kind load image-archive --name kind <(podman save localhost/konflux-ci/squid:latest)
+kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:latest)
 ```
 
 #### 4. Permission Denied Errors
@@ -370,6 +556,57 @@ kubectl cluster-info dump | grep -i cidr
 # Default ACLs cover: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
 ```
 
+#### 7. Test Pod IP Not Available
+
+**Symptom**: Tests fail with "POD_IP environment variable not set"
+
+**Solution**: Ensure downward API is configured (automatically handled by Helm chart):
+```bash
+kubectl describe pod -n proxy <test-pod-name>
+```
+
+#### 8. Mirrord Connection Issues
+
+**Symptom**: `mage test:cluster` fails with mirrord connection errors
+
+**Solution**: Verify mirrord infrastructure is deployed and working:
+```bash
+# Verify mirrord target pod is ready
+kubectl get pods -n proxy -l app.kubernetes.io/component=mirrord-target
+
+# Check mirrord target pod logs
+kubectl logs -n proxy mirrord-test-target
+
+# Verify mirrord configuration
+cat .mirrord/mirrord.json
+
+# Ensure mirrord is installed
+which mirrord
+```
+
+#### 9. Test Failures
+
+**Symptom**: Tests fail unexpectedly or show connection issues
+
+**Solution**: Debug test execution and cluster state:
+```bash
+# Run tests with verbose output
+mage test:cluster  # Check output for detailed error messages
+
+# Verify cluster state before running tests
+mage squidHelm:status
+
+# Check if all pods are running
+kubectl get pods -n proxy
+
+# Verify proxy connectivity manually
+kubectl run debug --image=curlimages/curl:latest --rm -it -- \
+  curl -v --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip
+
+# View test logs from helm tests
+kubectl logs -n proxy -l app.kubernetes.io/component=test
+```
+
 ### Debugging Commands
 
 ```bash
@@ -387,6 +624,33 @@ kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy htt
 
 # Check service endpoints
 kubectl get endpoints -n proxy
+
+# Test environment debugging
+mage kind:status && mage squidHelm:status
+
+# Verify test infrastructure (when running tests)
+kubectl get pods -n proxy -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n proxy -l app.kubernetes.io/component=test
+
+# View test logs from helm tests
+kubectl logs -n proxy -l app.kubernetes.io/component=test
+```
+
+#### 10. Working with Existing kind Clusters (Dev Container Users)
+
+**Symptom**: You're using the dev container and have an existing kind cluster with a different name
+
+**Solution**: Either use the existing cluster or create the expected one:
+```bash
+# Option 1: Check what clusters exist
+kind get clusters
+
+# Option 2: Export kubeconfig for existing cluster (if using default 'kind' cluster)
+kind export kubeconfig --name kind
+kubectl config use-context kind-kind
+
+# Option 3: Create the expected 'caching' cluster for consistency with automation
+kind create cluster --name caching
 ```
 
 ## Monitoring
@@ -459,7 +723,7 @@ kubectl delete namespace proxy
 
 ```bash
 # Delete the entire cluster (or use: mage kind:down)
-kind delete cluster --name kind
+kind delete cluster --name caching
 ```
 
 #### Clean Up Local Images
