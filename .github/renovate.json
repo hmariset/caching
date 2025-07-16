@@ -1,6 +1,5 @@
 {
-  "extends": ["config:base"],
-  "schedule": ["before 6am on monday"],
+  "extends": ["config:base", ":disableDependencyDashboard"],
   "prConcurrentLimit": 3,
   "branchConcurrentLimit": 3,
   "automergeType": "branch",
@@ -16,8 +15,7 @@
     {
       "description": "Group Tekton bundle updates together",
       "groupName": "tekton-bundles",
-      "matchPackagePatterns": ["quay.io/konflux-ci/tekton-catalog/"],
-      "schedule": ["before 6am on monday"]
+      "matchPackagePatterns": ["quay.io/konflux-ci/tekton-catalog/"]
     },
     {
       "description": "Group container base image updates",
@@ -25,8 +23,7 @@
       "matchPackagePatterns": [
         "registry.access.redhat.com/",
         "registry.fedoraproject.org/"
-      ],
-      "schedule": ["before 6am on tuesday"]
+      ]
     }
   ]
 } 
