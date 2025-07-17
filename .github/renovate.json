@@ -1,8 +1,5 @@
 {
-  "extends": ["config:base", ":disableDependencyDashboard"],
-  "prConcurrentLimit": 3,
-  "branchConcurrentLimit": 3,
-  "automergeType": "branch",
+  "extends": ["github>konflux-ci/mintmaker//config/renovate/renovate.json"],
   "automergeStrategy": "merge-commit",
   "platformAutomerge": true,
   "packageRules": [
@@ -15,7 +12,8 @@
     {
       "description": "Group Tekton bundle updates together",
       "groupName": "tekton-bundles",
-      "matchPackagePatterns": ["quay.io/konflux-ci/tekton-catalog/"]
+      "matchPackagePatterns": ["quay.io/konflux-ci/tekton-catalog/"],
+      "automerge": true
     },
     {
       "description": "Group container base image updates",
@@ -23,7 +21,10 @@
       "matchPackagePatterns": [
         "registry.access.redhat.com/",
         "registry.fedoraproject.org/"
-      ]
+      ],
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": true
     }
   ]
 } 
+
