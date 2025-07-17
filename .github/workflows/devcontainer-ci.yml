@@ -16,8 +16,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.merge_commit_sha }}
       
     - name: Install podman
       run: |
@@ -91,6 +89,17 @@ jobs:
         podman exec devcontainer-test ls -la /workspaces/caching
         podman exec devcontainer-test cat /workspaces/caching/README.md | head -5
         
+    - name: Deploy Kind environment
+      run: |
+        # Test that deploying our environment in Kind and our Helm chart works
+        podman exec -w /workspaces/caching devcontainer-test mage all
+
+    - name: Clean up Kind environment
+      if: always()
+      run: |  
+        podman exec -w /workspaces/caching devcontainer-test mage clean
+        podman exec -w /workspaces/caching devcontainer-test kind delete cluster --name caching-ci
+  
     - name: Cleanup container
       if: always()
       run: |
