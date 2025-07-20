@@ -102,11 +102,20 @@ jobs:
     - name: Lint devcontainer Containerfile
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint .devcontainer/Containerfile
-        
-                
+                        
     - name: Deploy Kind environment
       run: |
         # Test that deploying our environment in Kind and our Helm chart works
+        podman exec -w /workspaces/caching devcontainer-test mage squidHelm:up
+  
+    - name: Run our test suit (via mirrord)
+      run: |
+        # Run the test suit via mirrord, so we can see detailed output
+        podman exec -w /workspaces/caching devcontainer-test mage test:cluster
+
+    - name: Retest Kind environment
+      run: |
+        # Test that out deployment is reentrant and that `helm test` works
         podman exec -w /workspaces/caching devcontainer-test mage all
 
     - name: Clean up Kind environment
