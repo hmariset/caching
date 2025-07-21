@@ -2,7 +2,7 @@
 
 This repository contains a Helm chart for deploying a Squid HTTP proxy server in Kubernetes. The chart is designed to be self-contained and deploys into a dedicated `proxy` namespace.
 
-## Prerequisites
+## Deveoplment Prerequisites
 
 Increase the `inotify` resource limits to avoid Kind issues related to
 [too many open files in](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files).
@@ -51,11 +51,11 @@ This repository includes a dev container configuration that provides a consisten
 
 Once these prerequisites are met, you can open this folder in VS Code and use the "Reopen in Container" command to launch the environment with all tools pre-configured.
 
-## Automated Quick Start (Recommended)
+## Quick Start
+
+### Using automation
 
 This repository includes complete automation for setting up your local development and testing environment. Use this approach for the easiest setup:
-
-### Complete Environment Setup
 
 ```bash
 # Set up the complete local dev/test environment automatically
@@ -69,7 +69,7 @@ This single command will:
 - Deploy the Helm chart with all dependencies
 - Verify the deployment status
 
-### Individual Components
+#### Individual Components
 
 You can also run individual components:
 
@@ -97,27 +97,12 @@ mage test:cluster     # Run tests with mirrord cluster networking
 mage clean           # Remove everything (cluster, images, etc.)
 ```
 
-### List All Available Commands
+#### List All Available Commands
 
 ```bash
 # See all available automation commands
 mage -l
 ```
-
-## Quick Start
-
-> **Note**: The automation uses a kind cluster named `caching` for consistency and isolation. Manual setup examples below use the same naming for consistency.
-
-### Automated Setup (Recommended)
-
-For the easiest setup, use the automation:
-
-```bash
-# Complete environment setup in one command
-mage all
-```
-
-This will handle all the steps below automatically with proper error handling and dependency management.
 
 ### Manual Setup (Advanced)
 
@@ -143,7 +128,17 @@ podman build -t localhost/konflux-ci/squid:latest -f Containerfile .
 kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:latest)
 ```
 
-#### 3. Deploy Squid with Helm
+#### 3. Build and Load the "Testing" Container Image
+
+```bash
+# Build the container image (or use: mage build:squid)
+podman build -t localhost/konflux-ci/squid-test:latest -f test.Containerfile .
+
+# Load the image into kind (or use: mage build:loadSquid)
+kind load image-archive --name caching <(podman save localhost/konflux-ci/squid-test:latest)
+```
+
+#### 4. Deploy Squid with Helm
 
 ```bash
 # Install the Helm chart (or use: mage squidHelm:up)
@@ -222,68 +217,25 @@ This repository includes comprehensive end-to-end tests to validate the Squid pr
 ```bash
 # Complete test setup and execution (recommended)
 mage all
-
-# Or run tests manually after setup
-mage test:cluster
 ```
 
-### Test Architecture
+In this mode tests are invoked by Helm via `helm test`.
 
-The testing infrastructure includes:
-
-- **E2E Tests** (`tests/e2e/`): Comprehensive deployment and HTTP caching validation
-- **Test Helpers** (`tests/testhelpers/`): Reusable components for proxy testing
-- **Test Server** (`tests/testserver/`): In-process HTTP server for caching validation
-- **Helm Tests**: Integrated testing via `helm test` command (most realistic - runs in cluster pods)
-- **Mirrord Integration**: Local development testing with cluster network access
-
-### Test Execution Options
-
-#### 1. Automated Testing (Recommended)
-
-The complete automation includes test execution:
-
-```bash
-# Set up environment and run all tests
-mage all
-
-# This will:
-# - Create kind cluster and deploy Squid
-# - Run helm tests to validate deployment
-# - Verify HTTP caching functionality
-# - Show comprehensive results
-```
-
-#### 2. Local Development Testing with Mirrord
+### Local Development Testing with Mirrord
 
 For local development and debugging, use mirrord to run tests with cluster network access:
 
 ```bash
+# Setup test environment
+mage squidGelm:up
+
 # Run tests locally with cluster network access
 mage test:cluster
-
-# This uses mirrord to "steal" network connections from a target pod,
-# allowing local debugging without rebuilding test containers
 ```
 
-#### 3. Manual Test Execution
-
-```bash
-# Set up test environment
-mage squidHelm:up
-
-# Run tests with mirrord (for local development)
-mage test:cluster
-
-# Run helm tests directly (most realistic - runs in cluster pods)
-helm test squid
-
-# Note: Running ginkgo directly without mirrord will fail on HTTP caching tests
-# since they require cluster network access
-
-# Clean up
-mage clean
-```
+This uses mirrord to "steal" network connections from a target pod and runs
+the test locally (outside of the Kind cluster) with Ginkgo. This allows for 
+local debugging without rebuilding test containers
 
 ### VS Code Integration
 
@@ -306,85 +258,6 @@ Available VS Code tasks (Ctrl+Shift+P → "Tasks: Run Task"):
 - **Clean Test Environment**: Clean up all resources
 - **Run Focused Ginkgo Tests**: Run specific test patterns
 
-#### Quick Commands
-
-```bash
-# Run tests from VS Code terminal (requires mirrord)
-mage test:cluster
-
-# Run tests with specific focus patterns
-mage test:cluster  # Then edit .mirrord/mirrord.json to focus on specific tests
-
-# Run helm tests only (deployment validation)
-helm test squid
-
-# Note: Direct ginkgo commands require mirrord setup and cluster network access
-```
-
-### Test Scenarios Covered
-
-#### Deployment Validation
-- ✅ Namespace creation and configuration
-- ✅ Deployment status and readiness
-- ✅ Service configuration and endpoints
-- ✅ Pod health and security context
-- ✅ ConfigMap mounting and content
-
-#### HTTP Caching Functionality
-- ✅ **Round-trip caching test**: Validates that first request hits server, second serves from cache
-- ✅ **Cache headers validation**: Ensures proper cache-control headers
-- ✅ **Multi-URL independence**: Different URLs cached separately
-- ✅ **Cross-pod communication**: Tests work across cluster network boundaries
-
-#### Infrastructure Testing
-- ✅ **Mirrord target pod**: Validates mirrord infrastructure deployment
-- ✅ **Service discovery**: Tests proxy resolution via DNS
-- ✅ **Network connectivity**: End-to-end network path validation
-
-### Test Configuration
-
-#### Environment Variables
-
-The tests use these environment variables (automatically configured):
-
-```bash
-SQUID_NAMESPACE=proxy              # Target namespace
-SQUID_SERVICE_NAME=squid          # Service name
-SQUID_SERVICE_PORT=3128           # Proxy port
-POD_IP=<dynamic>                  # Pod IP from downward API
-TEST_SERVER_PORT=9090             # Test server port
-```
-
-#### Mirrord Configuration
-
-Testing uses mirrord in "targetless" mode with the configuration in `.mirrord/mirrord.json`:
-
-```json
-{
-    "target": {
-        "path": "pod/mirrord-test-target",
-        "namespace": "proxy"
-    },
-    "feature": {
-        "network": {
-            "incoming": {
-                "mode": "steal",
-                "http_filter": {
-                    "path_filter": ".*\\?.*"
-                }
-            }
-        }
-    }
-}
-```
-
-This configuration allows tests to:
-- "Steal" HTTP connections from the target pod
-- Access cluster networking from your local development environment
-- Debug and set breakpoints without rebuilding test containers
-
-
-
 ### Contributing to Tests
 
 When adding new tests:
@@ -394,70 +267,6 @@ When adding new tests:
 3. **Add cache-busting**: Use unique URLs to prevent test interference
 4. **Verify cleanup**: Ensure tests clean up resources properly
 5. **Update VS Code config**: Add debug configurations for new test files
-
-### Performance and Reliability
-
-- **Parallel execution**: Tests are designed to run safely in parallel
-- **Cache isolation**: Each test uses unique URLs to prevent cache pollution
-- **Resource efficiency**: Minimal resource requirements for test pods
-- **Fast feedback**: Test execution typically completes in under 2 minutes
-
-The testing infrastructure provides confidence in deployment correctness and HTTP caching functionality. Helm tests provide the most realistic validation by running in actual cluster pods, while mirrord enables efficient local development and debugging.
-
-### Testing Examples
-
-Here are common testing workflows:
-
-```bash
-# Full end-to-end testing (recommended for CI/verification)
-mage all  # Sets up everything and runs helm tests
-
-# Development workflow - test changes locally
-mage squidHelm:up      # Deploy your changes
-mage test:cluster      # Run tests with debugging capability
-# Make code changes, then rerun tests without rebuilding containers
-
-# Quick validation after changes
-helm test squid        # Fast deployment validation
-
-# Debugging test failures
-mage squidHelm:status  # Check deployment health
-kubectl logs -n proxy deployment/squid  # Check squid logs
-kubectl get pods -n proxy  # Check all pod states
-
-# Clean slate testing
-mage clean && mage all  # Remove everything and start fresh
-```
-
-## Configuration
-
-### Squid Configuration
-
-The Squid configuration is stored in `squid/squid.conf` and mounted via a ConfigMap. Key settings include:
-
-- **Allowed networks**: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` (covers most Kubernetes pod networks)
-- **Port**: 3128
-- **Access control**: Allows traffic from local networks, denies unsafe ports
-
-To modify the configuration:
-
-1. Edit `squid/squid.conf`
-2. Upgrade the deployment: `helm upgrade squid ./squid`
-
-### Helm Values
-
-Key configuration options in `squid/values.yaml`:
-
-```yaml
-replicaCount: 1
-image:
-  repository: localhost/konflux-ci/squid
-  tag: "latest"
-namespace:
-  name: proxy  # Target namespace
-service:
-  port: 3128
-```
 
 ## Troubleshooting
 
@@ -607,35 +416,6 @@ kubectl run debug --image=curlimages/curl:latest --rm -it -- \
 kubectl logs -n proxy -l app.kubernetes.io/component=test
 ```
 
-### Debugging Commands
-
-```bash
-# Check pod status
-kubectl get pods -n proxy
-
-# View pod logs
-kubectl logs -n proxy deployment/squid
-
-# Check Squid access logs
-kubectl exec -n proxy deployment/squid -- tail -f /var/log/squid/access.log
-
-# Test connectivity from within cluster
-kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip
-
-# Check service endpoints
-kubectl get endpoints -n proxy
-
-# Test environment debugging
-mage kind:status && mage squidHelm:status
-
-# Verify test infrastructure (when running tests)
-kubectl get pods -n proxy -l app.kubernetes.io/component=mirrord-target
-kubectl get pods -n proxy -l app.kubernetes.io/component=test
-
-# View test logs from helm tests
-kubectl logs -n proxy -l app.kubernetes.io/component=test
-```
-
 #### 10. Working with Existing kind Clusters (Dev Container Users)
 
 **Symptom**: You're using the dev container and have an existing kind cluster with a different name
@@ -653,19 +433,27 @@ kubectl config use-context kind-kind
 kind create cluster --name caching
 ```
 
-## Monitoring
-
-### Viewing Squid Logs
+### Debugging Commands
 
 ```bash
-# Main Squid logs (startup, errors)
+# Check pod status
+kubectl get pods -n proxy
+
+# View pod logs
 kubectl logs -n proxy deployment/squid
 
-# Access logs (HTTP requests)
-kubectl exec -n proxy deployment/squid -- tail -f /var/log/squid/access.log
+# Test connectivity from within cluster
+kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip
 
-# Follow logs in real-time
-kubectl logs -n proxy deployment/squid -f
+# Check service endpoints
+kubectl get endpoints -n proxy
+
+# Verify test infrastructure (when running tests)
+kubectl get pods -n proxy -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n proxy -l app.kubernetes.io/component=test
+
+# View test logs from helm tests
+kubectl logs -n proxy -l app.kubernetes.io/component=test
 ```
 
 ### Health Checks
@@ -687,24 +475,6 @@ This is normal - Kubernetes is performing TCP health checks without sending comp
 mage clean
 ```
 
-This will efficiently remove all resources in the correct order.
-
-### Individual Component Cleanup
-
-You can also clean up individual components:
-
-```bash
-# Remove only the helm deployment
-mage squidHelm:down
-
-# Remove only the kind cluster
-mage kind:down
-
-# Check status of components
-mage kind:status
-mage squidHelm:status
-```
-
 ### Manual Cleanup (Advanced)
 
 If you prefer manual control:
@@ -712,11 +482,14 @@ If you prefer manual control:
 #### Remove the Deployment
 
 ```bash
-# Uninstall the Helm release (or use: mage squidHelm:down)
+# Uninstall the Helm release
 helm uninstall squid
 
-# Remove the namespace (optional, will be recreated on next install)
+# Remove the namespaces (optional, will be recreated on next install)
 kubectl delete namespace proxy
+
+# If you used the "squid" helm chart to install cert-manager
+kubectl delete namespace cert-manager
 ```
 
 #### Remove the kind Cluster
@@ -732,53 +505,6 @@ kind delete cluster --name caching
 # Remove the local container image
 podman rmi localhost/konflux-ci/squid:latest
 ```
-
-## Chart Structure
-
-```
-squid/
-├── Chart.yaml              # Chart metadata
-├── values.yaml             # Default configuration values
-├── squid.conf              # Squid configuration file
-└── templates/
-    ├── _helpers.tpl         # Template helpers
-    ├── configmap.yaml       # ConfigMap for squid.conf
-    ├── deployment.yaml      # Squid deployment
-    ├── namespace.yaml       # Proxy namespace
-    ├── service.yaml         # Squid service
-    ├── serviceaccount.yaml  # Service account
-    └── NOTES.txt           # Post-install instructions
-```
-
-## Security Considerations
-
-- The proxy runs as non-root user (UID 1001)
-- Access is restricted to RFC 1918 private networks
-- Unsafe ports and protocols are blocked
-- No disk caching is enabled by default (memory-only)
-
-## Contributing
-
-When modifying the chart:
-
-1. Test changes locally with kind
-2. Update this README if adding new features
-3. Verify the proxy works both within and across namespaces
-4. Check that cleanup procedures work correctly
-
-## Automation Benefits
-
-The Mage-based automation system provides several key benefits:
-
-- **Dependency Management**: Automatically handles prerequisites (cluster → image → deployment)
-- **Error Handling**: Robust error handling with clear feedback
-- **Idempotent Operations**: Can run commands multiple times safely
-- **Smart Logic**: Detects existing resources and handles install vs upgrade scenarios
-- **Consistent Patterns**: All resource types follow the same up/down/status/upClean pattern
-- **Single Command Setup**: `mage all` sets up the complete environment
-- **Efficient Cleanup**: `mage clean` removes all resources in the correct order
-
-For the best experience, use the automation commands instead of manual setup!
 
 ## License
 
