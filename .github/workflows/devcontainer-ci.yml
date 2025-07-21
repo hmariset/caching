@@ -99,6 +99,10 @@ jobs:
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint Containerfile
         
+    - name: Lint test Containerfile
+      run: |
+        podman exec -w /workspaces/caching devcontainer-test hadolint test.Containerfile
+          
     - name: Lint devcontainer Containerfile
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint .devcontainer/Containerfile

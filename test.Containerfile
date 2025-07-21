@@ -13,6 +13,7 @@ RUN microdnf install -y \
 # Install Go (version-locked)
 ARG GO_VERSION=1.24.4
 ARG GO_SHA256=77e5da33bb72aeaef1ba4418b6fe511bc4d041873cbf82e5aa6318740df98717
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xzf go.tar.gz && \
@@ -38,9 +39,8 @@ COPY tests/ ./tests/
 # Set up Go module and compile tests and testserver at build time
 RUN go mod download && \
     go mod tidy && \
-    cd tests && \
-    ginkgo build ./e2e && \
-    CGO_ENABLED=1 go build -o /app/testserver ./testserver
+    ginkgo build ./tests/e2e && \
+    CGO_ENABLED=1 go build -o /app/testserver ./tests/testserver
 
 # Create a non-root user for running tests
 RUN adduser --uid 1001 --gid 0 --shell /bin/bash --create-home testuser
