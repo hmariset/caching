@@ -1,5 +1,5 @@
-# Start from an official Fedora 42 image
-FROM registry.fedoraproject.org/fedora:42
+# Start from latest stable Fedora image (digest-pinned)
+FROM registry.fedoraproject.org/fedora:latest@sha256:9042a959ba4617df2d08214a34dcec6f23634f04fd94047bf4fca41b47211114
 
 # DNF tuning from official Podman Containerfile for build robustness
 RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
