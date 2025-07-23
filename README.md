@@ -19,6 +19,7 @@ initialization if either value is too low.
 
 ### Option 1: Manual Installation
 
+- [gcc](https://gcc.gnu.org/)
 - [Go](https://golang.org/doc/install) 1.21 or later
 - [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/getting-started/installation)
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (Kubernetes in Docker)
@@ -225,7 +226,7 @@ For local development and debugging, use mirrord to run tests with cluster netwo
 
 ```bash
 # Setup test environment
-mage squidGelm:up
+mage squidHelm:up
 
 # Run tests locally with cluster network access
 mage test:cluster
