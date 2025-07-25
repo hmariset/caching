@@ -1,0 +1,42 @@
+# Build stage - Use UBI10 go-toolset with digest pin
+FROM registry.access.redhat.com/ubi10/go-toolset@sha256:228b210d2186224fbdd73de208e27e83a6f9e68ada279d6bc4dbe3d06d1cbbef AS builder
+
+# Switch to root user for package installation
+USER 0
+
+# Set working directory
+WORKDIR /workspace
+
+# Clone the konflux-ci fork of squid-exporter
+RUN git clone https://github.com/konflux-ci/squid-exporter.git .
+
+# Initialize Go module if not present and build
+RUN if [ ! -f go.mod ]; then go mod init squid-exporter; go mod tidy; fi && \
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o squid-exporter .
+
+# Runtime stage - Use UBI10 with digest pin
+FROM registry.access.redhat.com/ubi10/ubi@sha256:158b70012c4898a0951abc5b4f98cefff6ec6bff3fb99957ff2f1793df7c681a
+
+# Create non-root user
+RUN useradd -r -u 1001 -g 0 squid-exporter
+
+# Copy the binary from builder stage
+COPY --from=builder /workspace/squid-exporter /usr/local/bin/squid-exporter
+
+# Set ownership and permissions
+RUN chown 1001:0 /usr/local/bin/squid-exporter && \
+    chmod +x /usr/local/bin/squid-exporter
+
+# Switch to non-root user
+USER 1001
+
+# Expose the metrics port
+EXPOSE 9301
+
+# Health check using TCP connection instead of curl
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD /bin/sh -c "exec 3<>/dev/tcp/localhost/9301 && echo -e 'GET /metrics HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && grep -q 'HTTP/1.1 200' <&3"
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/squid-exporter"]
+CMD ["-squid-hostname", "localhost", "-squid-port", "3128", "-listen", ":9301"] 

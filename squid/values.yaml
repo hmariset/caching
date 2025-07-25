@@ -63,10 +63,10 @@ service:
 squidExporter:
   # Enable or disable the squid-exporter sidecar
   enabled: true
-  # Squid exporter container image
+  # Squid exporter container image - using konflux-ci fork instead of third-party
   image:
-    repository: boynux/squid-exporter
-    tag: "v1.13.0"
+    repository: localhost/konflux-ci/squid-exporter
+    tag: "latest"
     pullPolicy: IfNotPresent
   # Port on which the exporter will serve metrics
   port: 9301

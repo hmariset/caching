@@ -82,8 +82,10 @@ mage kind:down        # Remove cluster
 mage kind:upClean     # Force recreate cluster
 
 # Image management
-mage build:squid      # Build squid image
-mage build:loadSquid  # Load image into cluster
+mage build:squid             # Build squid image
+mage build:squidExporter     # Build squid-exporter image
+mage build:loadSquid         # Load squid image into cluster
+mage build:loadSquidExporter # Load squid-exporter image into cluster
 
 # Deployment management
 mage squidHelm:up     # Deploy/upgrade helm chart
@@ -268,7 +270,7 @@ When adding new tests:
 5. **Update VS Code config**: Add debug configurations for new test files
 ## Prometheus Monitoring
 
-This chart includes comprehensive Prometheus monitoring capabilities through the standard [squid-exporter](https://github.com/boynux/squid-exporter). The monitoring system provides detailed metrics about Squid's operational status, including:
+This chart includes comprehensive Prometheus monitoring capabilities through the [squid-exporter](https://github.com/konflux-ci/squid-exporter) (forked from the original boynux implementation). The monitoring system provides detailed metrics about Squid's operational status, including:
 
 - **Liveness**: Squid service information and connection status
 - **Bandwidth Usage**: Client HTTP and Server HTTP traffic metrics
@@ -948,8 +950,10 @@ kind delete cluster --name caching
 #### Clean Up Local Images
 
 ```bash
-# Remove the local container image
+# Remove the local container images
 podman rmi localhost/konflux-ci/squid:latest
+podman rmi localhost/konflux-ci/squid-exporter:latest
+podman rmi localhost/konflux-ci/squid-test:latest
 ```
 
 ## Chart Structure
