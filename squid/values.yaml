@@ -15,9 +15,6 @@ image:
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
-# This is to override the chart name.
-nameOverride: ""
-fullnameOverride: ""
 
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
@@ -90,14 +87,14 @@ squidExporter:
   # Probe configurations for squid-exporter sidecar
   livenessProbe:
     httpGet:
-      path: "/metrics"  # Will use squidExporter.metricsPath in template
+      path: "/metrics" # Will use squidExporter.metricsPath in template
       port: metrics
     enabled: true
     initialDelaySeconds: 30
     periodSeconds: 30
   readinessProbe:
     httpGet:
-      path: "/metrics"  # Will use squidExporter.metricsPath in template
+      path: "/metrics" # Will use squidExporter.metricsPath in template
       port: metrics
     enabled: true
     initialDelaySeconds: 5
@@ -140,7 +137,7 @@ livenessProbe:
   tcpSocket:
     port: http
   enabled: true
-  
+
 readinessProbe:
   tcpSocket:
     port: http
@@ -296,15 +293,13 @@ cert-manager:
   tolerations: []
   affinity: {}
 
-
 trust-manager:
   crds:
     enabled: false
     keep: false
   namespace: "cert-manager"
 
-
 # Issuer configuration
 # Creates a self-signed issuer and bundle in the cert-manager namespace
 selfsigned-bundle:
-  enabled: true  # Set to true to create a self-signed issuer and bundle
+  enabled: true # Set to true to create a self-signed issuer and bundle
