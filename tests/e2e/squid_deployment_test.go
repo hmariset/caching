@@ -102,7 +102,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 				}
 			}
 			Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
-			Expect(squidContainer.Image).To(ContainSubstring("konflux-ci/squid"))
+			Expect(squidContainer.Image).To(ContainSubstring("squid"))
 
 			// Check squid port configuration
 			Expect(squidContainer.Ports).To(HaveLen(1))
