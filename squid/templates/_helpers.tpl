@@ -35,6 +35,7 @@ Selector labels
 {{- define "squid.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "squid.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: squid-proxy
 {{- end }}
 
 {{/*

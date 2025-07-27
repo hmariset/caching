@@ -5,8 +5,14 @@ metadata:
   name: "{{ include "squid.fullname" . }}-test"
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    # Use different app name to avoid service selector conflicts
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: {{ include "squid.fullname" . }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: test
+    app: {{ .Values.test.name }}
+    helm.sh/chart: {{ include "squid.chart" . }}
   annotations:
     "helm.sh/hook": test
     "helm.sh/hook-weight": "1"
