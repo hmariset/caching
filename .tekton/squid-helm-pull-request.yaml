@@ -35,20 +35,6 @@ spec:
   pipelineSpec:
     description: |
       This pipeline is ideal for building Helm charts while maintaining trust after pipeline customization.
-    # finally:
-    #   - name: show-sbom
-    #     params:
-    #       - name: IMAGE_URL
-    #         value: $(tasks.build-helm-chart.results.IMAGE_URL)
-    #     taskRef:
-    #       params:
-    #         - name: name
-    #           value: show-sbom
-    #         - name: bundle
-    #           value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:86c069cac0a669797e8049faa8aa4088e70ff7fcd579d5bdc37626a9e0488a05
-    #         - name: kind
-    #           value: task
-    #       resolver: bundles
     params:
       - description: Source Repository URL
         name: git-url
@@ -204,14 +190,10 @@ spec:
             value: $(params.output-image)
           - name: CHART_CONTEXT
             value: $(params.path-context)
-          # - name: IMAGE_EXPIRES_AFTER
-          #   value: $(params.image-expires-after)
           - name: COMMIT_SHA
             value: $(tasks.clone-repository.results.commit)
           - name: SOURCE_ARTIFACT
             value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-          # - name: CACHI2_ARTIFACT
-          #  value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
           - name: IMAGE_MAPPINGS
             value: |
               [
@@ -233,7 +215,7 @@ spec:
             - name: name
               value: build-helm-chart-oci-ta
             - name: bundle
-              value: quay.io/bkorren/tekton-catalog/task-build-helm-chart-oci-ta:test-image-substitution
+              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.2@sha256:cb079237f436051951a30470fc7410ea6b9c05c21a323101b594583aab571c26
             - name: kind
               value: task
           resolver: bundles
@@ -272,6 +254,58 @@ spec:
             operator: in
             values:
               - "true"
+      - name: sast-shell-check
+        params:
+        - name: image-digest
+          value: $(tasks.build-helm-chart.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-helm-chart.results.IMAGE_URL)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+        runAfter:
+        - build-helm-chart
+        taskRef:
+          params:
+          - name: name
+            value: sast-shell-check-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-sast-shell-check-oci-ta:0.1@sha256:bf7bdde00b7212f730c1356672290af6f38d070da2c8a316987b5c32fd49e0b9
+          - name: kind
+            value: task
+          resolver: bundles
+        when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+          - "false"
+      - name: sast-unicode-check
+        params:
+        - name: image-digest
+          value: $(tasks.build-helm-chart.results.IMAGE_DIGEST)
+        - name: image-url
+          value: $(tasks.build-helm-chart.results.IMAGE_URL)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+        runAfter:
+        - build-helm-chart
+        taskRef:
+          params:
+          - name: name
+            value: sast-unicode-check-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.3@sha256:a2bde66f6b4164620298c7d709b8f08515409404000fa1dc2260d2508b135651
+          - name: kind
+            value: task
+          resolver: bundles
+        when:
+        - input: $(params.skip-checks)
+          operator: in
+          values:
+          - "false"
     workspaces:
       - name: git-auth
         optional: true
