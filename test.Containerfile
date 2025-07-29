@@ -46,5 +46,15 @@ RUN go mod download && \
 RUN adduser --uid 1001 --gid 0 --shell /bin/bash --create-home testuser
 USER 1001
 
+LABEL name="Konflux CI Squid Tester"
+LABEL summary="Konflux CI Squid Tester"
+LABEL description="Konflux CI Squid Tester"
+LABEL maintainer="bkorren@redhat.com"
+LABEL com.redhat.component="konflux-ci-squid-tester"
+LABEL io.k8s.description="Konflux CI Squid Tester"
+LABEL io.k8s.display-name="konflux-ci-squid-tester"
+LABEL io.openshift.expose-services="3128:squid"
+LABEL io.openshift.tags="squid-tester"
+
 # Default command runs the compiled test binary
 CMD ["./tests/e2e/e2e.test", "-ginkgo.v"] 
