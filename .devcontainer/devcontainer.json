@@ -6,7 +6,7 @@
     },
     "workspaceFolder": "/workspaces/caching",
     "updateRemoteUserUID": true,
-    "initializeCommand": "bash .devcontainer/initialize.sh",
+    "initializeCommand": "/bin/bash .devcontainer/initialize.sh",
     "mounts": [
         "source=${localEnv:XDG_RUNTIME_DIR}/podman/podman.sock,target=/var/run/podman.sock,type=bind"
     ],
