@@ -44,5 +44,6 @@
     "go.testExplorer.packageDisplayMode": "nested",
     "go.generateTestsFlags": [
         "-only"
-    ]
+    ],
+    "mirrord.promptUsingDefaultConfig": false
 }

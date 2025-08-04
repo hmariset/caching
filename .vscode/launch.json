@@ -11,7 +11,7 @@
                 "-ginkgo.v"
             ],
             "env": {
-                "CGO_ENABLED": "0"
+                "CGO_ENABLED": "1"
             },
             "console": "integratedTerminal",
             "showLog": true
@@ -27,7 +27,7 @@
                 "-ginkgo.focus=${input:focusSpec}"
             ],
             "env": {
-                "CGO_ENABLED": "0"
+                "CGO_ENABLED": "1"
             },
             "console": "integratedTerminal",
             "showLog": true
@@ -43,7 +43,7 @@
                 "-coverprofile=coverage.out"
             ],
             "env": {
-                "CGO_ENABLED": "0"
+                "CGO_ENABLED": "1"
             },
             "console": "integratedTerminal",
             "showLog": true

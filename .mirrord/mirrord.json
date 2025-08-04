@@ -14,6 +14,11 @@
             "outgoing": true
         },
         "fs": "read",
-        "env": true
+        "env": {
+            "exclude": [
+                "GOPATH",
+                "GOCACHE"
+            ]
+        }
     }
 }

@@ -10,6 +10,7 @@ ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng cur
 RUN dnf -y makecache && \
     dnf -y update && \
     dnf -y install $INSTALL_RPMS --exclude container-selinux && \
+    dnf -y install glibc-debuginfo gcc-debuginfo libgcc-debuginfo --enablerepo=fedora-debuginfo,updates-debuginfo && \
     dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 

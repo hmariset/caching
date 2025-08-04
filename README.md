@@ -28,6 +28,19 @@ initialization if either value is too low.
 - [Mage](https://magefile.org/) (for automation - `go install github.com/magefile/mage@latest`)
 - [mirrord](https://mirrord.dev/docs/overview/quick-start/) (for local development with cluster network access - optional but recommended)
 
+#### Debug Symbols (Required for Go Debugging)
+
+Install the following debug symbols to enable proper debugging of Go applications:
+
+```bash
+# Enable debug repositories and install debug symbols
+sudo dnf install -y dnf-plugins-core
+sudo dnf --enablerepo=fedora-debuginfo,updates-debuginfo install -y \
+    glibc-debuginfo \
+    gcc-debuginfo \
+    libgcc-debuginfo
+```
+
 ### Option 2: Development Container (Automated)
 
 This repository includes a dev container configuration that provides a consistent development environment with all prerequisites pre-installed. To use it, you need the following on your local machine:
