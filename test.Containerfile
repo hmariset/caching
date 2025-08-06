@@ -5,7 +5,7 @@ FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:ce6e336ca4c1b153e84719f
 RUN microdnf install -y \
     tar-2:1.35-7.el10 \
     gzip-1.13-3.el10 \
-    which-2.21-43.el10 \
+    which-2.21-44.el10_0 \
     procps-ng-4.0.4-7.el10 \
     gcc-14.2.1-7.el10 && \
     microdnf clean all
