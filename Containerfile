@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:ce6e336ca4c1b153e84719f9a123b9b94118dd83194e10da18137d1c571017fe
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:c07753b82a485973c441b2dfefb909ff17486409f49a1800a30e9ea4f104aeb9
 
 ENV NAME="konflux-ci/squid"
 ENV SUMMARY="The Squid proxy caching server for Konflux CI"
