@@ -32,7 +32,7 @@ rules:
 # Expansive permissions are required to run `helm upgrade` from inside the test pod.
 - apiGroups: [""]
   resources: ["namespaces", "pods", "services", "endpoints", "secrets", "configmaps", "serviceaccounts"]
-  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+  verbs: ["get", "list", "watch", "create", "delete", "deletecollection", "update", "patch"]
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
   verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]

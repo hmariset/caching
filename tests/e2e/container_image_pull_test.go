@@ -14,6 +14,27 @@ import (
 )
 
 var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"), func() {
+	BeforeAll(func() {
+		// Configure Squid ONCE with all CDN patterns (Quay + Docker Hub)
+		// This reduces Helm operations from 4 to 1, preventing Helm state corruption
+		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+			Cache: &testhelpers.CacheValues{
+				AllowList: []string{
+					// Quay.io CDN patterns
+					"^https://cdn([0-9]{2})?\\.quay\\.io/.+/sha256/.+/[a-f0-9]{64}",
+					"^https://s3\\.[a-z0-9-]+\\.amazonaws\\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}",
+					"^https://quayio-production-s3\\.s3[a-z0-9.-]*\\.amazonaws\\.com/sha256/.+/[a-f0-9]{64}",
+					// Docker Hub CDN patterns
+					"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+				},
+			},
+			ReplicaCount: int(suiteReplicaCount),
+		})
+		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid with CDN patterns")
+	})
+
 	AfterAll(func() {
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			ReplicaCount: int(suiteReplicaCount),
@@ -35,19 +56,8 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
-	// Reconfigure squid to force the cache to be cleared
-	err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
-		Cache: &testhelpers.CacheValues{
-			AllowList: []string{
-				"^https://cdn([0-9]{2})?\\.quay\\.io/.+/sha256/.+/[a-f0-9]{64}",
-				"^https://s3\\.[a-z0-9-]+\\.amazonaws\\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}",
-				"^https://quayio-production-s3\\.s3[a-z0-9.-]*\\.amazonaws\\.com/sha256/.+/[a-f0-9]{64}",
-				"dummy-" + imageRef, // Unique dummy value to ensure the pod is recreated
-			},
-		},
-		ReplicaCount: int(suiteReplicaCount),
-	})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	// Delete squid pods to get fresh cache (avoids Helm upgrade)
+	clearSquidCache()
 
 	pullAndVerifyContainerImageCDN(imageRef,
 		`(?m)^.*TCP_(MISS|HIT).*(cdn(?:[0-9]{2})?\.quay\.io|quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`,
@@ -55,19 +65,8 @@ func pullAndVerifyQuayCDN(imageRef string) {
 }
 
 func pullAndVerifyDockerHubCDN(imageRef string) {
-	// Reconfigure squid to force the cache to be cleared
-	err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
-		Cache: &testhelpers.CacheValues{
-			AllowList: []string{
-				"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
-				"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
-				"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
-				"dummy-" + imageRef, // Unique dummy value to ensure the pod is recreated
-			},
-		},
-		ReplicaCount: int(suiteReplicaCount),
-	})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	// Delete squid pods to get fresh cache (avoids Helm upgrade)
+	clearSquidCache()
 
 	pullAndVerifyContainerImageCDN(imageRef,
 		`(?m)^.*TCP_(MISS|HIT).*(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com).*$`,
@@ -147,4 +146,50 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 	Expect(foundHit).To(BeTrue(), "Should find TCP_HIT for %s in pod logs (proves content was served from cache)", cdnName)
 
 	fmt.Printf("DEBUG: Caching verification successful - found CDN requests from %s!\n", cdnName)
+}
+
+// clearSquidCache deletes all squid pods and waits for new pods to be created.
+// This clears the cache without triggering a Helm upgrade, reducing Helm operations.
+func clearSquidCache() {
+	By("Deleting squid pods to clear cache")
+
+	// Get current deployment to know expected replica count
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to get deployment")
+	expectedReplicas := *deployment.Spec.Replicas
+
+	// Delete all squid pods
+	err = clientset.CoreV1().Pods(namespace).DeleteCollection(
+		ctx,
+		metav1.DeleteOptions{},
+		metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=" + deploymentName,
+		},
+	)
+	Expect(err).NotTo(HaveOccurred(), "Failed to delete squid pods")
+
+	fmt.Printf("Deleted squid pods, waiting for %d new pods to be ready...\n", expectedReplicas)
+
+	// Wait for new pods to be ready
+	Eventually(func() bool {
+		pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, expectedReplicas)
+		if err != nil {
+			return false
+		}
+		// All pods should be ready
+		for _, pod := range pods {
+			if pod.Status.Phase != "Running" {
+				return false
+			}
+			// Check container readiness
+			for _, container := range pod.Status.ContainerStatuses {
+				if !container.Ready {
+					return false
+				}
+			}
+		}
+		return len(pods) == int(expectedReplicas)
+	}, 2*time.Minute, 5*time.Second).Should(BeTrue(), "Timed out waiting for new squid pods to be ready")
+
+	fmt.Println("New squid pods are ready with fresh cache")
 }
