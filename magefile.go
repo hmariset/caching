@@ -559,7 +559,7 @@ func (CachingHelm) Down() error {
 
 	// Wait for all possible namespaces concurrently (handles non-existent namespaces gracefully)
 	var wg sync.WaitGroup
-	for _, ns := range []string{"caching", squidNamespace, nginxNamespace} {
+	for _, ns := range []string{squidNamespace, nginxNamespace} {
 		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
@@ -601,21 +601,16 @@ func (CachingHelm) Status() error {
 		return fmt.Errorf("helm release not found: %w", err)
 	}
 
-	// Legacy mode: check components in the shared "caching" namespace
-	showComponentStatus("caching", "squid")
-	showComponentStatus("caching", "nginx")
-
-	// Independent mode: check component-specific namespaces if they exist
 	if exists, nsErr := namespaceExists(squidNamespace); nsErr != nil {
 		fmt.Printf("⚠️  Warning: %v\n", nsErr)
 	} else if exists {
-		fmt.Printf("\n📋 Independent mode namespace detected: %s\n", squidNamespace)
+		fmt.Printf("\n📋 Component namespace detected: %s\n", squidNamespace)
 		showComponentStatus(squidNamespace, "squid")
 	}
 	if exists, nsErr := namespaceExists(nginxNamespace); nsErr != nil {
 		fmt.Printf("⚠️  Warning: %v\n", nsErr)
 	} else if exists {
-		fmt.Printf("\n📋 Independent mode namespace detected: %s\n", nginxNamespace)
+		fmt.Printf("\n📋 Component namespace detected: %s\n", nginxNamespace)
 		showComponentStatus(nginxNamespace, "nginx")
 	}
 
@@ -650,7 +645,7 @@ func All() error {
 		fmt.Println("❌ Helm tests failed! Capturing test pod logs for debugging...")
 		fmt.Println()
 		fmt.Println("=== Squid Test Pod Logs ===")
-		logsError := sh.RunV("kubectl", "logs", "-n", "caching", "caching-test")
+		logsError := sh.RunV("kubectl", "logs", "-n", squidNamespace, "caching-test")
 		if logsError != nil {
 			fmt.Printf("⚠️  Could not retrieve test pod logs: %v\n", logsError)
 		}
@@ -664,8 +659,8 @@ func All() error {
 	fmt.Println("🎉 Complete automation workflow finished successfully!")
 	fmt.Println("Your local dev/test environment is ready:")
 	fmt.Println("  • Kind cluster: 'caching'")
-	fmt.Println("  • Squid forward proxy: http://squid.caching.svc.cluster.local:3128")
-	fmt.Println("  • Nginx reverse proxy: http://nginx.caching.svc.cluster.local:8080")
+	fmt.Println("  • Squid forward proxy: http://squid.squid-proxy.svc.cluster.local:3128")
+	fmt.Println("  • Nginx reverse proxy: http://nginx.nginx-proxy.svc.cluster.local:8080")
 	fmt.Println("  • Helm tests: ✅ All passing")
 	fmt.Println("  • Ready for development and testing!")
 	return nil
@@ -715,7 +710,7 @@ func runClusterTests(replicaCount int) error {
 
 	// Verify mirrord target pod is ready (deployed by Helm chart)
 	fmt.Println("⏳ Waiting for mirrord target pod to be ready...")
-	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", "caching", "--timeout=60s")
+	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", squidNamespace, "--timeout=60s")
 	if err != nil {
 		return fmt.Errorf("mirrord target pod not ready - check Helm deployment: %w", err)
 	}
@@ -810,7 +805,7 @@ func (Test) ClusterMultiReplica() error {
 	// Wait for statefulset to be ready with 3 replicas
 	fmt.Println("⏳ Waiting for statefulset with 3 replicas to be ready...")
 	err = sh.Run("kubectl", "wait", "--for=condition=Ready",
-		"statefulset/squid", "-n", "caching", "--timeout=120s")
+		"statefulset/squid", "-n", squidNamespace, "--timeout=120s")
 	if err != nil {
 		return fmt.Errorf("statefulset not ready: %w", err)
 	}

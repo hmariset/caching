@@ -899,7 +899,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(configMap).To(ContainSubstring("namespace: nginx-proxy"), "ConfigMap should be in nginx-proxy namespace")
 		})
 
-		It("should use default caching namespace when nginx.namespace is empty", func() {
+		It("should use default nginx-proxy namespace when nginx.namespace is omitted", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
@@ -910,12 +910,12 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			// All nginx resources should be in default caching namespace
+			// All nginx resources should be in default nginx-proxy namespace
 			statefulSet := extractNginxStatefulSetSection(output)
-			Expect(statefulSet).To(ContainSubstring("namespace: caching"), "StatefulSet should be in caching namespace")
+			Expect(statefulSet).To(ContainSubstring("namespace: nginx-proxy"), "StatefulSet should be in nginx-proxy namespace")
 
 			service := extractNginxServiceSection(output)
-			Expect(service).To(ContainSubstring("namespace: caching"), "Service should be in caching namespace")
+			Expect(service).To(ContainSubstring("namespace: nginx-proxy"), "Service should be in nginx-proxy namespace")
 		})
 
 		It("should use correct namespace in test backend URL when nginx has custom namespace", func() {

@@ -5,7 +5,7 @@ import "time"
 // Test configuration constants shared across all test packages
 const (
 	// General constants
-	Namespace = "caching"
+	Namespace = "squid-proxy"
 	Timeout   = 60 * time.Second
 	Interval  = 2 * time.Second
 
@@ -17,6 +17,7 @@ const (
 	SquidTLSSecretName   = Namespace + "-tls"
 
 	// Nginx constants
+	NginxNamespace       = "nginx-proxy"
 	NginxServiceName     = "nginx"
 	NginxStatefulSetName = "nginx"
 	NginxPort            = 80

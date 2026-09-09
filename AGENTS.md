@@ -18,7 +18,7 @@ mage -l                     # List all targets
 mage all                    # Full setup: cluster + build + deploy + test
 mage test:unit              # Unit tests (no cluster needed)
 mage test:cluster           # E2E tests (requires kind + mirrord)
-mage cachingHelm:up         # Deploy/upgrade Helm chart (shared namespace)
+mage cachingHelm:up         # Deploy/upgrade Helm chart (component namespaces)
 mage cachingHelm:upIndependent # Deploy with squid/nginx in separate namespaces
 mage build:squid            # Build squid container image
 mage lint:go                # golangci-lint (see Linting below)
@@ -39,7 +39,7 @@ Local and CI use dedicated checks; most are **not** run inside the devcontainer 
 
 ## Conventions
 - Use **Podman**, not Docker — all Mage targets call `podman`
-- Chart manages its own namespaces — don't pass `helm -n`. Default: shared `caching` namespace. Independent mode (`cachingHelm:upIndependent`): `squid-proxy` and `nginx-proxy`
+- Chart manages its own namespaces — don't pass `helm -n`. Defaults: `squid-proxy` and `nginx-proxy`
 - E2E tests require `CGO_ENABLED=1` and mirrord installed
 - Go tests use **Ginkgo/Gomega** BDD framework
 - Filter tests: `GINKGO_LABEL_FILTER='!external-deps' mage test:cluster`

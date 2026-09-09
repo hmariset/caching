@@ -94,7 +94,7 @@ After deploying, confirm the proxy is working:
 
 ```bash
 # From your local machine (port-forward)
-kubectl port-forward -n caching svc/squid 3128:3128
+kubectl port-forward -n squid-proxy svc/squid 3128:3128
 curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 
 # From within the cluster (creates a temporary test pod)
@@ -190,7 +190,7 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/cachin
 ```bash
 # Deploy for local dev — enables nginx reverse proxy (required for access-log-exporter sidecar)
 helm install caching ./caching --set environment=dev --set nginx.enabled=true
-kubectl get pods -n caching
+kubectl get pods -n squid-proxy
 ```
 
 ### Helm Configuration Examples
@@ -224,7 +224,7 @@ mage clean              # Remove cluster + images (recommended)
 ```bash
 # Remove Helm release and namespace
 helm uninstall caching
-kubectl delete namespace caching
+kubectl delete namespace squid-proxy nginx-proxy
 
 # Remove cert-manager namespace (if installed via chart)
 kubectl delete namespace cert-manager
