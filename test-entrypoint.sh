@@ -6,6 +6,8 @@ set -euo pipefail
 
 echo "=== Starting Ginkgo E2E Tests ==="
 echo "Target namespace: ${TARGET_NAMESPACE:-caching}"
+echo "Squid namespace: ${SQUID_NAMESPACE:-caching}"
+echo "Nginx namespace: ${NGINX_NAMESPACE:-caching}"
 echo "Squid service: ${SQUID_SERVICE:-squid.caching.svc.cluster.local:3128}"
 echo "Nginx service: ${NGINX_SERVICE:-nginx.caching.svc.cluster.local:8080}"
 

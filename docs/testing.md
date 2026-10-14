@@ -22,6 +22,15 @@ When running `helm test` directly (not through `mage all`), you must specify a t
 helm test caching --timeout=420s
 ```
 
+Test and mirrord resources run in `test.namespace` (`caching-test` by default), independently of the proxy namespaces. The test pod receives `SQUID_NAMESPACE` and `NGINX_NAMESPACE`, so either proxy can be deployed in a separate namespace or disabled. For an Nginx-only run:
+
+```bash
+helm upgrade --install caching ./caching \
+  --set squid.enabled=false --set nginx.enabled=true \
+  --set test.labelFilter=nginx
+helm test caching --timeout=420s
+```
+
 The default Helm test timeout is 5 minutes (300 seconds), which may not be sufficient for all tests to complete.
 
 ## Running Tests with Mirrord

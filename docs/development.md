@@ -191,6 +191,7 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/cachin
 # Deploy for local dev — enables nginx reverse proxy (required for access-log-exporter sidecar)
 helm install caching ./caching --set environment=dev --set nginx.enabled=true
 kubectl get pods -n caching
+kubectl get pods -n caching-test
 ```
 
 ### Helm Configuration Examples

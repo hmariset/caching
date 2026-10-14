@@ -26,7 +26,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 		statefulSet   *appsv1.StatefulSet
 	)
 
-	const testServerURL = "https://test-server." + namespace + ".svc.cluster.local:443"
+	testServerURL := "https://test-server." + testhelpers.TestNamespace + ".svc.cluster.local:443"
 
 	BeforeAll(func() {
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
@@ -220,7 +220,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 			Expect(logOutput).To(ContainSubstring("GET https://"), "Should show decrypted HTTPS GET requests")
 
 			// Verify the specific test server URL was requested
-			Expect(logOutput).To(ContainSubstring("test-server."+namespace+".svc.cluster.local"), "Should show the test server URL in logs")
+			Expect(logOutput).To(ContainSubstring("test-server."+testhelpers.TestNamespace+".svc.cluster.local"), "Should show the test server URL in logs")
 			Expect(logOutput).To(ContainSubstring("ssl-bump-test"), "Should show the SSL-Bump test endpoint in logs")
 
 			fmt.Printf("DEBUG: SSL-Bump verification successful - CONNECT tunnel and decrypted GET request detected!\n")
@@ -260,7 +260,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 			fmt.Printf("==========================================\n")
 
 			Expect(logOutput).To(ContainSubstring("TCP_MISS"), "Should show at least one TCP_MISS for the test URL")
-			Expect(logOutput).To(ContainSubstring("test-server."+namespace+".svc.cluster.local"), "Should show the test server URL in logs")
+			Expect(logOutput).To(ContainSubstring("test-server."+testhelpers.TestNamespace+".svc.cluster.local"), "Should show the test server URL in logs")
 			Expect(logOutput).To(ContainSubstring("ssl-bump-cache-test"), "Should show the SSL-Bump cache test endpoint in logs")
 			Expect(logOutput).To(ContainSubstring("TCP_HIT"), "Should show at least one TCP_HIT (RAM cache hit) for the test URL")
 

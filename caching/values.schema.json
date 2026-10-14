@@ -481,6 +481,10 @@
           "type": "string",
           "description": "Name used for the test pod, service account, RBAC resources, etc."
         },
+        "namespace": {
+          "type": "string",
+          "description": "Namespace for test and mirrord resources"
+        },
         "enabled": {
           "type": "boolean",
           "description": "Enable helm test functionality"

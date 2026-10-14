@@ -345,14 +345,14 @@ func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, 
 }
 
 // WaitForStatefulSetReady waits for a statefulset to be ready and all replica pods to be present
-func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, name string) (*v1.StatefulSet, error) {
+func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, namespace, name string) (*v1.StatefulSet, error) {
 	fmt.Printf("Waiting for %s statefulset to be ready...\n", name)
 
 	var expectedReplicas int32
 	var statefulSet *v1.StatefulSet
 	Eventually(func() error {
 		var err error
-		statefulSet, err = client.AppsV1().StatefulSets(Namespace).Get(ctx, name, metav1.GetOptions{})
+		statefulSet, err = client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get statefulsets: %w", err)
 		}
@@ -370,7 +370,7 @@ func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, n
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
 	fmt.Printf("Waiting for %d pod(s) to be present and ready...\n", expectedReplicas)
-	pods, err := GetPods(ctx, client, Namespace, name)
+	pods, err := GetPods(ctx, client, namespace, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pods: %w", err)
 	}
@@ -425,7 +425,8 @@ type SelfsignedBundleValues struct {
 
 // TestValues holds test configuration
 type TestValues struct {
-	Enabled *bool `json:"enabled,omitempty"`
+	Enabled   *bool  `json:"enabled,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // SquidExporterValues holds squid-exporter configuration
@@ -542,13 +543,23 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	}
 
 	values.Environment = environment
-
-	// Always enable nginx (disabled by default in values.yaml)
-	if values.Nginx == nil {
-		values.Nginx = &NginxValues{Enabled: true}
-	} else {
-		values.Nginx.Enabled = true
+	squidEnabled := os.Getenv("SQUID_ENABLED") != "false"
+	nginxEnabled := os.Getenv("NGINX_ENABLED") != "false"
+	if values.Squid == nil {
+		values.Squid = &SquidValues{}
 	}
+	values.Squid.Enabled = BoolPtr(squidEnabled)
+	values.Squid.Namespace = SquidNamespace
+	if values.Test == nil {
+		values.Test = &TestValues{}
+	}
+	values.Test.Namespace = TestNamespace
+
+	if values.Nginx == nil {
+		values.Nginx = &NginxValues{}
+	}
+	values.Nginx.Enabled = nginxEnabled
+	values.Nginx.Namespace = NginxNamespace
 
 	openshift, err := IsOpenShiftPlatform(client)
 	if err != nil {
@@ -556,7 +567,13 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	}
 
 	// Get current statefulset for image preservation logic
-	statefulSet, err := client.AppsV1().StatefulSets(Namespace).Get(ctx, SquidStatefulSetName, metav1.GetOptions{})
+	var statefulSet *v1.StatefulSet
+	if squidEnabled {
+		statefulSet, err = client.AppsV1().StatefulSets(SquidNamespace).Get(ctx, SquidStatefulSetName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get squid statefulset: %w", err)
+		}
+	}
 
 	// Handle replica count logic:
 	// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
@@ -599,14 +616,18 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
 
-	_, err = WaitForStatefulSetReady(ctx, client, SquidStatefulSetName)
-	if err != nil {
-		return fmt.Errorf("failed to wait for squid statefulset to be ready: %w", err)
+	if squidEnabled {
+		_, err = WaitForStatefulSetReady(ctx, client, SquidNamespace, SquidStatefulSetName)
+		if err != nil {
+			return fmt.Errorf("failed to wait for squid statefulset to be ready: %w", err)
+		}
 	}
 
-	_, err = WaitForStatefulSetReady(ctx, client, NginxStatefulSetName)
-	if err != nil {
-		return fmt.Errorf("failed to wait for nginx statefulset to be ready: %w", err)
+	if nginxEnabled {
+		_, err = WaitForStatefulSetReady(ctx, client, NginxNamespace, NginxStatefulSetName)
+		if err != nil {
+			return fmt.Errorf("failed to wait for nginx statefulset to be ready: %w", err)
+		}
 	}
 
 	return nil
@@ -1246,7 +1267,7 @@ func ExecCommandInPodWithWriters(ctx context.Context, client kubernetes.Interfac
 
 // GetNginxTestBackendURL returns the URL for the nginx test backend service.
 func GetNginxTestBackendURL() string {
-	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxTestBackendServiceName, Namespace, NginxTestBackendPort)
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxTestBackendServiceName, NginxNamespace, NginxTestBackendPort)
 }
 
 // CreateAuthSecret creates a Kubernetes secret with a Basic Auth authorization header value.
@@ -1257,18 +1278,18 @@ func CreateAuthSecret(ctx context.Context, client kubernetes.Interface, secretNa
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: Namespace,
+			Namespace: NginxNamespace,
 		},
 		StringData: map[string]string{
 			"authorization": authValue,
 		},
 	}
 
-	_, err := client.CoreV1().Secrets(Namespace).Create(ctx, secret, metav1.CreateOptions{})
+	_, err := client.CoreV1().Secrets(NginxNamespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create auth secret: %w", err)
 	}
 
-	fmt.Printf("Created auth secret '%s' in namespace '%s'\n", secretName, Namespace)
+	fmt.Printf("Created auth secret '%s' in namespace '%s'\n", secretName, NginxNamespace)
 	return nil
 }

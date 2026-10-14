@@ -1,20 +1,21 @@
 package testhelpers
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 // Test configuration constants shared across all test packages
 const (
 	// General constants
-	Namespace = "caching"
-	Timeout   = 60 * time.Second
-	Interval  = 2 * time.Second
+	Timeout  = 60 * time.Second
+	Interval = 2 * time.Second
 
 	// Squid constants
 	SquidServiceName     = "squid"
 	SquidStatefulSetName = "squid"
 	SquidContainerName   = "squid"
 	SquidComponentLabel  = "squid-caching"
-	SquidTLSSecretName   = Namespace + "-tls"
 
 	// Nginx constants
 	NginxServiceName     = "nginx"
@@ -27,3 +28,17 @@ const (
 	NginxTestBackendServiceName = "nginx-test-backend"
 	NginxTestBackendPort        = 9090
 )
+
+var (
+	SquidNamespace     = namespaceFromEnv("SQUID_NAMESPACE", "caching")
+	NginxNamespace     = namespaceFromEnv("NGINX_NAMESPACE", "caching")
+	TestNamespace      = namespaceFromEnv("TARGET_NAMESPACE", "caching-test")
+	SquidTLSSecretName = SquidNamespace + "-tls"
+)
+
+func namespaceFromEnv(name, fallback string) string {
+	if namespace := os.Getenv(name); namespace != "" {
+		return namespace
+	}
+	return fallback
+}

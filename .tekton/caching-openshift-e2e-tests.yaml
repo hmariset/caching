@@ -329,6 +329,7 @@ spec:
                   --namespace "$namespace" \
                   --set nginx.enabled=true \
                   --set squid.enabled=true \
+                  --set test.namespace=caching-test \
                   --set environment=prerelease \
                   --set envSettings.prerelease.squid.image.repository="$squid_repo" \
                   --set envSettings.prerelease.squid.image.tag="$squid_tag" \
@@ -348,16 +349,23 @@ spec:
 
                 echo "Caching chart deployed successfully!"
 
+                # The test pod runs in its own namespace and needs the same registry credentials.
+                for secret in $pull_secrets; do
+                  oc get secret -n caching "$secret" -o json | \
+                    jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp,.metadata.managedFields) | .metadata.namespace="caching-test"' | \
+                    oc apply -f -
+                done
+
                 echo "Running Helm tests..."
                 if ! helm test caching --namespace "$namespace" --timeout 90m; then
                   echo "ERROR: Helm test failed!"
                   echo "=== caching-test pod logs (failure) ==="
-                  oc logs -n caching caching-test --tail=2000 2>&1 || true
+                  oc logs -n caching-test caching-test --tail=2000 2>&1 || true
                   exit 1
                 fi
 
                 echo "Helm tests succeeded, capturing caching-test logs for diagnostics..."
                 echo "=== caching-test pod logs (success) ==="
-                oc logs -n caching caching-test --tail=2000 2>&1 || true
+                oc logs -n caching-test caching-test --tail=2000 2>&1 || true
 
                 echo "All E2E tests passed!"

@@ -44,6 +44,7 @@ const (
 	chartPath         = "./caching"
 	squidNamespace    = "squid-proxy"
 	nginxNamespace    = "nginx-proxy"
+	testNamespace     = "caching-test"
 )
 
 // Default target - shows available targets
@@ -559,7 +560,7 @@ func (CachingHelm) Down() error {
 
 	// Wait for all possible namespaces concurrently (handles non-existent namespaces gracefully)
 	var wg sync.WaitGroup
-	for _, ns := range []string{"caching", squidNamespace, nginxNamespace} {
+	for _, ns := range []string{"caching", squidNamespace, nginxNamespace, testNamespace} {
 		wg.Add(1)
 		go func(ns string) {
 			defer wg.Done()
@@ -650,7 +651,7 @@ func All() error {
 		fmt.Println("❌ Helm tests failed! Capturing test pod logs for debugging...")
 		fmt.Println()
 		fmt.Println("=== Squid Test Pod Logs ===")
-		logsError := sh.RunV("kubectl", "logs", "-n", "caching", "caching-test")
+		logsError := sh.RunV("kubectl", "logs", "-n", testNamespace, "caching-test")
 		if logsError != nil {
 			fmt.Printf("⚠️  Could not retrieve test pod logs: %v\n", logsError)
 		}
@@ -715,7 +716,7 @@ func runClusterTests(replicaCount int) error {
 
 	// Verify mirrord target pod is ready (deployed by Helm chart)
 	fmt.Println("⏳ Waiting for mirrord target pod to be ready...")
-	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", "caching", "--timeout=60s")
+	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", testNamespace, "--timeout=60s")
 	if err != nil {
 		return fmt.Errorf("mirrord target pod not ready - check Helm deployment: %w", err)
 	}
@@ -731,7 +732,10 @@ func runClusterTests(replicaCount int) error {
 
 	// Prepare environment variables for test execution
 	testEnv := map[string]string{
-		"CGO_ENABLED": "1",
+		"CGO_ENABLED":      "1",
+		"TARGET_NAMESPACE": testNamespace,
+		"SQUID_NAMESPACE":  "caching",
+		"NGINX_NAMESPACE":  "caching",
 	}
 
 	// Add SQUID_REPLICA_COUNT if specified
@@ -742,9 +746,7 @@ func runClusterTests(replicaCount int) error {
 
 	// Run tests with mirrord using ginkgo binary
 	fmt.Println("🚀 Running tests with mirrord connection stealing...")
-	return sh.RunWithV(map[string]string{
-		"CGO_ENABLED": "1",
-	}, "mirrord", "exec", "--config-file", ".mirrord/mirrord.json", "--",
+	return sh.RunWithV(testEnv, "mirrord", "exec", "--config-file", ".mirrord/mirrord.json", "--",
 		"./tests/e2e/e2e.test", "-ginkgo.v", "-ginkgo.label-filter="+os.Getenv("GINKGO_LABEL_FILTER"))
 }
 

@@ -1,13 +1,12 @@
-{{- if .Values.test.enabled }}
+{{- if or .Values.test.enabled .Values.mirrord.enabled }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Values.test.name }}
-  namespace: {{ include "caching.squid.namespace" . }}
+  namespace: {{ include "caching.test.namespace" . }}
   labels:
-    {{- include "caching.squid.labels" . | nindent 4 }}
-    app.kubernetes.io/component: test
+    {{- include "caching.test.labels" . | nindent 4 }}
   {{- if not .Values.mirrord.enabled }}
   annotations:
     "helm.sh/hook": test
@@ -20,8 +19,7 @@ kind: ClusterRole
 metadata:
   name: {{ .Values.test.name }}
   labels:
-    {{- include "caching.squid.labels" . | nindent 4 }}
-    app.kubernetes.io/component: test
+    {{- include "caching.test.labels" . | nindent 4 }}
   {{- if not .Values.mirrord.enabled }}
   annotations:
     "helm.sh/hook": test
@@ -60,8 +58,7 @@ kind: ClusterRoleBinding
 metadata:
   name: {{ .Values.test.name }}
   labels:
-    {{- include "caching.squid.labels" . | nindent 4 }}
-    app.kubernetes.io/component: test
+    {{- include "caching.test.labels" . | nindent 4 }}
   {{- if not .Values.mirrord.enabled }}
   annotations:
     "helm.sh/hook": test
@@ -75,5 +72,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.test.name }}
-  namespace: {{ include "caching.squid.namespace" . }}
+  namespace: {{ include "caching.test.namespace" . }}
 {{- end }}

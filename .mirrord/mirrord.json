@@ -1,7 +1,7 @@
 {
     "target": {
         "path": "pod/mirrord-test-target",
-        "namespace": "caching"
+        "namespace": "caching-test"
     },
     "feature": {
         "network": {

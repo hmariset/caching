@@ -24,13 +24,14 @@ var (
 )
 
 const (
-	namespace          = testhelpers.Namespace
 	deploymentName     = testhelpers.SquidStatefulSetName
 	serviceName        = testhelpers.SquidServiceName
 	timeout            = testhelpers.Timeout
 	interval           = testhelpers.Interval
 	squidContainerName = testhelpers.SquidContainerName
 )
+
+var namespace = testhelpers.SquidNamespace
 
 // getPodIP returns the pod IP address from downward API
 func getPodIP() (string, error) {
@@ -108,7 +109,7 @@ var _ = BeforeSuite(func() {
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
-	// Read replica count from environment variable or from existing deployment
+	// Read replica count from environment variable or from an existing Squid deployment.
 	if envReplicas := os.Getenv("SQUID_REPLICA_COUNT"); envReplicas != "" {
 		if count, parseErr := strconv.ParseInt(envReplicas, 10, 32); parseErr == nil {
 			suiteReplicaCount = int32(count)
@@ -119,7 +120,7 @@ var _ = BeforeSuite(func() {
 	} else {
 		// No env var set, try to read from existing deployment
 		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, reading from statefulset...\n")
-		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.Namespace).Get(ctx, testhelpers.SquidStatefulSetName, metav1.GetOptions{})
+		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, testhelpers.SquidStatefulSetName, metav1.GetOptions{})
 		if err == nil && statefulSet != nil && statefulSet.Spec.Replicas != nil {
 			suiteReplicaCount = *statefulSet.Spec.Replicas
 			fmt.Printf("DEBUG: Using replica count from existing statefulset: %d\n", suiteReplicaCount)

@@ -2,7 +2,7 @@
 {{- $baseAnnotations := .Values.namespace.annotations | default dict }}
 {{- $squidUsesBase := and .Values.squid.enabled (not .Values.squid.namespace) }}
 {{- $nginxUsesBase := and .Values.nginx.enabled (not .Values.nginx.namespace) }}
-{{- $testUsesBase := .Values.test.enabled }}
+{{- $testUsesBase := and (or .Values.test.enabled .Values.mirrord.enabled) (not .Values.test.namespace) }}
 {{- if or $squidUsesBase $nginxUsesBase $testUsesBase }}
 ---
 apiVersion: v1
@@ -15,4 +15,13 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
 {{- end }}
+{{- end }}
+{{- if and (or .Values.test.enabled .Values.mirrord.enabled) .Values.test.namespace (ne .Values.test.namespace $baseNamespace) }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.test.namespace }}
+  labels:
+    name: {{ .Values.test.namespace }}
 {{- end }}

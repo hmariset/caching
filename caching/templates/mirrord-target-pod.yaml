@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: {{ .Values.mirrord.targetPod.name }}
-  namespace: {{ include "caching.squid.namespace" . }}
+  namespace: {{ include "caching.test.namespace" . }}
   labels:
     # Use different app name to avoid service selector conflicts
     app.kubernetes.io/name: mirrord-target
@@ -16,6 +16,10 @@ metadata:
 spec:
   serviceAccountName: {{ .Values.test.name }}
   restartPolicy: Always  # Keep the target pod running for development
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   containers:
     - name: mirrord-target
       image: "{{ include "caching.test.image" . }}"

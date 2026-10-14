@@ -105,7 +105,7 @@ kubectl cluster-info dump | grep -i cidr
 
 **Solution**: Ensure downward API is configured (automatically handled by Helm chart):
 ```bash
-kubectl describe pod -n caching <test-pod-name>
+kubectl describe pod -n caching-test <test-pod-name>
 ```
 
 ### 8. Mirrord Connection Issues
@@ -115,10 +115,10 @@ kubectl describe pod -n caching <test-pod-name>
 **Solution**: Verify mirrord infrastructure is deployed and working:
 ```bash
 # Verify mirrord target pod is ready
-kubectl get pods -n caching -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n caching-test -l app.kubernetes.io/component=mirrord-target
 
 # Check mirrord target pod logs
-kubectl logs -n caching mirrord-test-target
+kubectl logs -n caching-test mirrord-test-target
 
 # Verify mirrord configuration
 cat .mirrord/mirrord.json

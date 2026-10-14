@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-server
-  namespace: {{ include "caching.squid.namespace" . }}
+  namespace: {{ include "caching.test.namespace" . }}
   labels:
     app: test-server
 spec:
@@ -54,7 +54,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: test-server
-  namespace: {{ include "caching.squid.namespace" . }}
+  namespace: {{ include "caching.test.namespace" . }}
 spec:
   selector:
     app: test-server
@@ -67,7 +67,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-server-nginx-conf
-  namespace: {{ include "caching.squid.namespace" . }}
+  namespace: {{ include "caching.test.namespace" . }}
 data:
   default.conf: |
     # Listen on 8443 (non-privileged port) for OpenShift compatibility
