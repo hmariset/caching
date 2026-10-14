@@ -22,7 +22,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 	Describe("Metrics Endpoint", func() {
 		It("should have squid-exporter container running with correct configuration", func() {
 			// Get the squid statefulset to verify exporter container
-			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 
 			// Find squid-exporter container
@@ -52,7 +52,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 
 		It("should expose metrics endpoint through service", func() {
 			// Get the squid service
-			service, err := clientset.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+			service, err := clientset.CoreV1().Services(testhelpers.SquidNamespace).Get(ctx, serviceName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid service")
 
 			// Verify service has metrics port
@@ -76,7 +76,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 
 		It("should return valid metrics from the exporter endpoint", func() {
 			// Create HTTP client to access metrics endpoint directly
-			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, namespace)
+			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, testhelpers.SquidNamespace)
 
 			client := &http.Client{
 				Timeout: 10 * time.Second,
@@ -190,7 +190,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 		}
 
 		getMetrics := func() (string, error) {
-			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, namespace)
+			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, testhelpers.SquidNamespace)
 			resp, err := metricsClient.Get(metricsURL)
 			if err != nil {
 				return "", err
@@ -313,7 +313,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 
 	Describe("Metrics Format and Standards", func() {
 		It("should return metrics in valid Prometheus format", func() {
-			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, namespace)
+			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, testhelpers.SquidNamespace)
 			client := &http.Client{Timeout: 10 * time.Second}
 
 			resp, err := client.Get(metricsURL)
@@ -391,7 +391,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 		})
 
 		It("should include required metric metadata", func() {
-			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, namespace)
+			metricsURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:9301/metrics", serviceName, testhelpers.SquidNamespace)
 			client := &http.Client{Timeout: 10 * time.Second}
 
 			resp, err := client.Get(metricsURL)

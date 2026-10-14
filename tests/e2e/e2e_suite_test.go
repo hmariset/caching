@@ -31,8 +31,6 @@ const (
 	squidContainerName = testhelpers.SquidContainerName
 )
 
-var namespace = testhelpers.SquidNamespace
-
 // getPodIP returns the pod IP address from downward API
 func getPodIP() (string, error) {
 	// Get pod IP from environment variable set by downward API
@@ -78,7 +76,7 @@ func setupHTTPTestServer(msg string) *testhelpers.CachingTestServer {
 // setupHTTPTestClient sets up an HTTP test client
 // Registers a cleanup function to automatically close idle connections
 func setupHTTPTestClient() *http.Client {
-	client, err := testhelpers.NewSquidCachingClient(serviceName, namespace)
+	client, err := testhelpers.NewSquidCachingClient(serviceName, testhelpers.SquidNamespace)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create caching client")
 
 	DeferCleanup(func() {
@@ -137,7 +135,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
 
 	// Verify we can connect to the cluster
-	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
+	_, err = clientset.CoreV1().Pods(testhelpers.SquidNamespace).List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")
 
 	By("Suite setup complete - Configuration is ready")

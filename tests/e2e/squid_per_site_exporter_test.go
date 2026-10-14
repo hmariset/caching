@@ -28,7 +28,7 @@ var _ = Describe("Per-Site Exporter", func() {
 
 		BeforeEach(func() {
 			var err error
-			statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			statefulSet, err = clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 		})
 
@@ -72,7 +72,7 @@ var _ = Describe("Per-Site Exporter", func() {
 
 		BeforeEach(func() {
 			var err error
-			service, err = clientset.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+			service, err = clientset.CoreV1().Services(testhelpers.SquidNamespace).Get(ctx, serviceName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid service")
 		})
 
@@ -106,7 +106,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			testServer, err = testhelpers.NewCachingTestServer("Per-site metrics endpoint test", podIP, 0)
 			Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
 
-			client, err = testhelpers.NewSquidCachingClient(serviceName, namespace)
+			client, err = testhelpers.NewSquidCachingClient(serviceName, testhelpers.SquidNamespace)
 			Expect(err).NotTo(HaveOccurred(), "Failed to create caching client")
 		})
 
@@ -129,7 +129,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 
 			time.Sleep(10 * time.Second)
 
-			metricsURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9302/metrics", serviceName, namespace)
+			metricsURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9302/metrics", serviceName, testhelpers.SquidNamespace)
 			c := newHTTPSClient(10 * time.Second)
 
 			Eventually(func() error {
@@ -163,7 +163,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		})
 
 		It("should have health check endpoint working", func() {
-			healthURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9302/health", serviceName, namespace)
+			healthURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9302/health", serviceName, testhelpers.SquidNamespace)
 			c := newHTTPSClient(10 * time.Second)
 
 			Eventually(func() error {
@@ -203,11 +203,11 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			testServer, err2 = testhelpers.NewCachingTestServer("Per-site exporter test", podIP, 0)
 			Expect(err2).NotTo(HaveOccurred(), "Failed to create test server")
 
-			client, err2 = testhelpers.NewSquidCachingClient(serviceName, namespace)
+			client, err2 = testhelpers.NewSquidCachingClient(serviceName, testhelpers.SquidNamespace)
 			Expect(err2).NotTo(HaveOccurred(), "Failed to create caching client")
 
 			metricsClient = newHTTPSClient(10 * time.Second)
-			statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			statefulSet, err = clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 		})
 
@@ -222,7 +222,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-metrics-test")
 
 			// Get baseline aggregated metrics from all pods
-			baselineRequests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient, namespace, *statefulSet.Spec.Replicas, "squid_site_requests_total", testHostname)
+			baselineRequests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient, testhelpers.SquidNamespace, *statefulSet.Spec.Replicas, "squid_site_requests_total", testHostname)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get aggregated metrics")
 			fmt.Printf("DEBUG: Baseline aggregated requests: %.0f\n", baselineRequests)
 
@@ -239,7 +239,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			time.Sleep(5 * time.Second)
 
 			Eventually(func() bool {
-				currentRequests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient, namespace, *statefulSet.Spec.Replicas, "squid_site_requests_total", testHostname)
+				currentRequests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient, testhelpers.SquidNamespace, *statefulSet.Spec.Replicas, "squid_site_requests_total", testHostname)
 				if err != nil {
 					fmt.Printf("DEBUG: Error getting aggregated metrics: %v\n", err)
 					return false
@@ -255,7 +255,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-bandwidth-test")
 
 			// Step 1: Get metrics from all pods before the request
-			podMetricsBefore, err := testhelpers.GetPerPodMetrics(ctx, clientset, metricsClient, namespace, *statefulSet.Spec.Replicas, "squid_site_bytes_total", testHostname)
+			podMetricsBefore, err := testhelpers.GetPerPodMetrics(ctx, clientset, metricsClient, testhelpers.SquidNamespace, *statefulSet.Spec.Replicas, "squid_site_bytes_total", testHostname)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get per-pod metrics before request")
 			fmt.Printf("DEBUG: Pod metrics before request: %v\n", podMetricsBefore)
 
@@ -277,7 +277,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			time.Sleep(5 * time.Second)
 
 			// Step 4: Get metrics from all pods after the request
-			podMetricsAfter, err := testhelpers.GetPerPodMetrics(ctx, clientset, metricsClient, namespace, *statefulSet.Spec.Replicas, "squid_site_bytes_total", testHostname)
+			podMetricsAfter, err := testhelpers.GetPerPodMetrics(ctx, clientset, metricsClient, testhelpers.SquidNamespace, *statefulSet.Spec.Replicas, "squid_site_bytes_total", testHostname)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get per-pod metrics after request")
 			fmt.Printf("DEBUG: Pod metrics after request: %v\n", podMetricsAfter)
 

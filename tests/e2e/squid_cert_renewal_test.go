@@ -12,16 +12,16 @@ import (
 
 var _ = Describe("Squid Certificate Renewal", Ordered, Serial, func() {
 	It("should restart squid containers when the TLS certificate is renewed", func() {
-		initialCounts, err := testhelpers.GetContainerRestartCounts(ctx, clientset, namespace, deploymentName, squidContainerName)
+		initialCounts, err := testhelpers.GetContainerRestartCounts(ctx, clientset, testhelpers.SquidNamespace, deploymentName, squidContainerName)
 		Expect(err).NotTo(HaveOccurred(), "Failed to get restart counts")
 
 		By("Deleting the TLS secret to trigger cert-manager re-issuance")
-		err = clientset.CoreV1().Secrets(namespace).Delete(ctx, testhelpers.SquidTLSSecretName, metav1.DeleteOptions{})
+		err = clientset.CoreV1().Secrets(testhelpers.SquidNamespace).Delete(ctx, testhelpers.SquidTLSSecretName, metav1.DeleteOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to delete TLS secret")
 
 		By("Waiting for cert-manager to re-create the TLS secret")
 		Eventually(func() error {
-			secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, testhelpers.SquidTLSSecretName, metav1.GetOptions{})
+			secret, err := clientset.CoreV1().Secrets(testhelpers.SquidNamespace).Get(ctx, testhelpers.SquidTLSSecretName, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("secret not yet recreated: %w", err)
 			}
@@ -33,10 +33,10 @@ var _ = Describe("Squid Certificate Renewal", Ordered, Serial, func() {
 			"cert-manager should recreate the TLS secret")
 
 		By("Waiting for all squid containers to restart")
-		testhelpers.WaitForContainerRestart(ctx, clientset, namespace, squidContainerName, initialCounts)
+		testhelpers.WaitForContainerRestart(ctx, clientset, testhelpers.SquidNamespace, squidContainerName, initialCounts)
 
 		By("Verifying all pods are ready after restart")
-		_, err = testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
+		_, err = testhelpers.GetPods(ctx, clientset, testhelpers.SquidNamespace, deploymentName)
 		Expect(err).NotTo(HaveOccurred(), "All pods should become ready after cert renewal")
 	})
 })

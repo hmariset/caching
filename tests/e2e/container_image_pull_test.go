@@ -111,20 +111,20 @@ func pullAndVerifyNvcrCDN(imageRef string) {
 // cdnRegexPattern should contain ONLY the CDN host pattern (e.g., "(cdn\.quay\.io|s3\.amazonaws\.com)").
 // The function will automatically build the full patterns with TCP_MISS and TCP_HIT prefixes.
 func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
-	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), namespace+"-ca-bundle", metav1.GetOptions{})
-	Expect(err).NotTo(HaveOccurred(), "Failed to get "+namespace+"-ca-bundle ConfigMap")
+	cm, err := clientset.CoreV1().ConfigMaps(testhelpers.SquidNamespace).Get(context.Background(), testhelpers.SquidNamespace+"-ca-bundle", metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to get "+testhelpers.SquidNamespace+"-ca-bundle ConfigMap")
 
 	client, err := testhelpers.NewTrustedSquidCachingClient(
 		serviceName,
-		namespace,
+		testhelpers.SquidNamespace,
 		[]byte(cm.Data["ca-bundle.crt"]),
 		[]byte(nil),
 	)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create trusted squid caching client")
 
-	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+	statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred(), "Failed to get statefulset")
-	pods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
+	pods, err := testhelpers.GetPods(ctx, clientset, testhelpers.SquidNamespace, deploymentName)
 	Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 
 	maxAttempts := int(*statefulSet.Spec.Replicas) + 1
@@ -154,7 +154,7 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 
 	// First, check logs from our test sequence
 	for _, pod := range pods {
-		logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &beforeSequence)
+		logs, err := testhelpers.GetPodLogsSince(ctx, clientset, testhelpers.SquidNamespace, pod.Name, squidContainerName, &beforeSequence)
 		if err != nil {
 			continue // Skip pods where we can't get logs
 		}
@@ -192,7 +192,7 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 		for _, pod := range pods {
 			podCreationTime := pod.CreationTimestamp
 
-			logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &podCreationTime)
+			logs, err := testhelpers.GetPodLogsSince(ctx, clientset, testhelpers.SquidNamespace, pod.Name, squidContainerName, &podCreationTime)
 			if err != nil {
 				continue
 			}

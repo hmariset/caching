@@ -13,17 +13,17 @@ import (
 
 var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 	var (
-		testServer *testhelpers.CachingTestServer
-		client     *http.Client
+		testServer  *testhelpers.CachingTestServer
+		client      *http.Client
 		statefulSet *appsv1.StatefulSet
-		err        error
+		err         error
 	)
 
 	BeforeEach(func() {
 		testServer = setupHTTPTestServer("Cache allow list test server")
 		client = setupHTTPTestClient()
 
-		statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+		statefulSet, err = clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 	})
 

@@ -54,9 +54,9 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 	Describe("Namespace", func() {
 		It("should have the caching namespace created", func() {
-			ns, err := clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+			ns, err := clientset.CoreV1().Namespaces().Get(ctx, testhelpers.SquidNamespace, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get caching namespace")
-			Expect(ns.Name).To(Equal(namespace))
+			Expect(ns.Name).To(Equal(testhelpers.SquidNamespace))
 			Expect(ns.Status.Phase).To(Equal(corev1.NamespaceActive))
 		})
 	})
@@ -66,13 +66,13 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		BeforeEach(func() {
 			var err error
-			statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			statefulSet, err = clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 		})
 
 		It("should exist and be properly configured", func() {
 			Expect(statefulSet.Name).To(Equal(deploymentName))
-			Expect(statefulSet.Namespace).To(Equal(namespace))
+			Expect(statefulSet.Namespace).To(Equal(testhelpers.SquidNamespace))
 
 			// Check statefulset spec
 			Expect(statefulSet.Spec.Replicas).NotTo(BeNil())
@@ -84,7 +84,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		It("should be ready and available", func() {
 			Eventually(func() bool {
-				sts, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+				sts, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 				if err != nil {
 					return false
 				}
@@ -174,7 +174,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			// Verify all replicas are ready despite anti-affinity constraints
 			Eventually(func() bool {
-				sts, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+				sts, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 				if err != nil {
 					return false
 				}
@@ -182,7 +182,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			}, timeout, interval).Should(BeTrue(), "All replicas should be ready despite anti-affinity constraints")
 
 			// Verify pods are actually running (not stuck in pending due to anti-affinity)
-			pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+			pods, err := clientset.CoreV1().Pods(testhelpers.SquidNamespace).List(ctx, metav1.ListOptions{
 				LabelSelector: "app.kubernetes.io/name=" + deploymentName + ",app.kubernetes.io/component=" + testhelpers.SquidComponentLabel,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -207,13 +207,13 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		BeforeEach(func() {
 			var err error
-			service, err = clientset.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+			service, err = clientset.CoreV1().Services(testhelpers.SquidNamespace).Get(ctx, serviceName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid service")
 		})
 
 		It("should exist and be properly configured", func() {
 			Expect(service.Name).To(Equal(deploymentName))
-			Expect(service.Namespace).To(Equal(namespace))
+			Expect(service.Namespace).To(Equal(testhelpers.SquidNamespace))
 
 			// Check service type and selector
 			Expect(service.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
@@ -252,7 +252,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		It("should have endpoints ready", func() {
 			Eventually(func() bool {
-				endpoints, err := clientset.CoreV1().Endpoints(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+				endpoints, err := clientset.CoreV1().Endpoints(testhelpers.SquidNamespace).Get(ctx, serviceName, metav1.GetOptions{})
 				if err != nil {
 					return false
 				}
@@ -274,7 +274,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			var err error
 			// GetSquidPods also checks that the all defined replicas are running and ready
 			// It returns the list of pods
-			pods, err = testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
+			pods, err = testhelpers.GetPods(ctx, clientset, testhelpers.SquidNamespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 		})
 
@@ -335,7 +335,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 	Describe("ConfigMap", func() {
 		It("should exist and contain squid configuration", func() {
-			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
+			configMap, err := clientset.CoreV1().ConfigMaps(testhelpers.SquidNamespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
 
 			Expect(configMap.Data).To(HaveKey("squid.conf"))
@@ -370,7 +370,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("cache-basic")
 
 			// Get the number of replicas from the statefulset
-			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Should get squid statefulset")
 			replicaCount := *statefulSet.Spec.Replicas
 
@@ -408,7 +408,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		Describe("Caching Verification", func() {
 			It("should verify configuration is set for disk caching", func() {
-				configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
+				configMap, err := clientset.CoreV1().ConfigMaps(testhelpers.SquidNamespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
 
 				squidConf := configMap.Data["squid.conf"]
@@ -427,23 +427,23 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		Describe("Resources verification", func() {
 			It("should have the self-signed cluster issuer created", func() {
-				clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-self-signed-cluster-issuer", metav1.GetOptions{})
+				clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, testhelpers.SquidNamespace+"-self-signed-cluster-issuer", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get self-signed cluster issuer")
 				Expect(clusterIssuer).NotTo(BeNil(), "ClusterIssuer should not be nil")
-				Expect(clusterIssuer.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
+				Expect(clusterIssuer.Name).To(Equal(testhelpers.SquidNamespace + "-self-signed-cluster-issuer"))
 				Expect(clusterIssuer.Spec.SelfSigned).NotTo(BeNil(), "SelfSigned spec should not be nil")
 			})
 
 			It("should have the CA certificate created in cert-manager namespace", func() {
 				// Get the CA certificate from the cert-manager namespace
-				caCert, err := certManagerClient.CertmanagerV1().Certificates("cert-manager").Get(ctx, namespace+"-self-signed-ca", metav1.GetOptions{})
+				caCert, err := certManagerClient.CertmanagerV1().Certificates("cert-manager").Get(ctx, testhelpers.SquidNamespace+"-self-signed-ca", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get CA certificate")
 				Expect(caCert).NotTo(BeNil(), "CA Certificate should not be nil")
-				Expect(caCert.Name).To(Equal(namespace + "-self-signed-ca"))
+				Expect(caCert.Name).To(Equal(testhelpers.SquidNamespace + "-self-signed-ca"))
 
 				// Verify the certificate spec
-				Expect(caCert.Spec.SecretName).To(Equal(namespace + "-root-ca-secret"))
-				Expect(caCert.Spec.IssuerRef.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
+				Expect(caCert.Spec.SecretName).To(Equal(testhelpers.SquidNamespace + "-root-ca-secret"))
+				Expect(caCert.Spec.IssuerRef.Name).To(Equal(testhelpers.SquidNamespace + "-self-signed-cluster-issuer"))
 				Expect(caCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
 				Expect(caCert.Spec.IsCA).To(BeTrue(), "CA certificate should have isCA set to true")
 
@@ -462,10 +462,10 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			It("should have the CA secret created in cert-manager namespace", func() {
 				// Get the CA secret from the cert-manager namespace
-				caSecret, err := clientset.CoreV1().Secrets("cert-manager").Get(ctx, namespace+"-root-ca-secret", metav1.GetOptions{})
+				caSecret, err := clientset.CoreV1().Secrets("cert-manager").Get(ctx, testhelpers.SquidNamespace+"-root-ca-secret", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get CA secret")
 				Expect(caSecret).NotTo(BeNil(), "CA Secret should not be nil")
-				Expect(caSecret.Name).To(Equal(namespace + "-root-ca-secret"))
+				Expect(caSecret.Name).To(Equal(testhelpers.SquidNamespace + "-root-ca-secret"))
 				Expect(caSecret.Namespace).To(Equal("cert-manager"))
 				Expect(caSecret.Type).To(Equal(corev1.SecretTypeTLS), "CA secret should be of type TLS")
 
@@ -478,34 +478,34 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			It("should have the CA cluster issuer created", func() {
 				// Get the CA cluster issuer
-				caIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-ca-issuer", metav1.GetOptions{})
+				caIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, testhelpers.SquidNamespace+"-ca-issuer", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get CA cluster issuer")
 				Expect(caIssuer).NotTo(BeNil(), "CA ClusterIssuer should not be nil")
-				Expect(caIssuer.Name).To(Equal(namespace + "-ca-issuer"))
+				Expect(caIssuer.Name).To(Equal(testhelpers.SquidNamespace + "-ca-issuer"))
 
 				// Verify the issuer spec
 				Expect(caIssuer.Spec.CA).NotTo(BeNil(), "CA spec should not be nil")
-				Expect(caIssuer.Spec.CA.SecretName).To(Equal(namespace+"-root-ca-secret"), "CA issuer should reference the "+namespace+"-root-ca-secret")
+				Expect(caIssuer.Spec.CA.SecretName).To(Equal(testhelpers.SquidNamespace+"-root-ca-secret"), "CA issuer should reference the "+testhelpers.SquidNamespace+"-root-ca-secret")
 			})
 
 			It("should have the caching certificate created in caching namespace", func() {
 				// Get the caching certificate from the caching namespace
-				cachingCert, err := certManagerClient.CertmanagerV1().Certificates(namespace).Get(ctx, namespace+"-cert", metav1.GetOptions{})
+				cachingCert, err := certManagerClient.CertmanagerV1().Certificates(testhelpers.SquidNamespace).Get(ctx, testhelpers.SquidNamespace+"-cert", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get caching certificate")
 				Expect(cachingCert).NotTo(BeNil(), "Caching Certificate should not be nil")
-				Expect(cachingCert.Name).To(Equal(namespace + "-cert"))
+				Expect(cachingCert.Name).To(Equal(testhelpers.SquidNamespace + "-cert"))
 
 				// Verify the certificate spec
 				Expect(cachingCert.Spec.SecretName).To(Equal(testhelpers.SquidTLSSecretName))
-				Expect(cachingCert.Spec.IssuerRef.Name).To(Equal(namespace + "-ca-issuer"))
+				Expect(cachingCert.Spec.IssuerRef.Name).To(Equal(testhelpers.SquidNamespace + "-ca-issuer"))
 				Expect(cachingCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
 				Expect(cachingCert.Spec.IsCA).To(BeTrue(), "Caching certificate should have isCA set to true")
 
 				// Verify DNS names
 				Expect(cachingCert.Spec.DNSNames).To(ContainElement("localhost"))
 				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName))
-				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc"))
-				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc.cluster.local"))
+				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + testhelpers.SquidNamespace + ".svc"))
+				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + testhelpers.SquidNamespace + ".svc.cluster.local"))
 
 				// Verify the certificate status
 				Expect(cachingCert.Status.Conditions).NotTo(BeEmpty(), "Caching certificate should have status conditions")
@@ -522,7 +522,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			It("should have the TLS secret created with certificate data", func() {
 				// Get the TLS secret from the caching namespace
-				tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, testhelpers.SquidTLSSecretName, metav1.GetOptions{})
+				tlsSecret, err := clientset.CoreV1().Secrets(testhelpers.SquidNamespace).Get(ctx, testhelpers.SquidTLSSecretName, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get TLS secret")
 				Expect(tlsSecret).NotTo(BeNil(), "TLS Secret should not be nil")
 				Expect(tlsSecret.Name).To(Equal(testhelpers.SquidTLSSecretName))
@@ -540,7 +540,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 	Describe("Cache Recovery", func() {
 		It("should clean cache on restart when cache is full", func() {
 			By("Getting the current Squid pod")
-			pods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
+			pods, err := testhelpers.GetPods(ctx, clientset, testhelpers.SquidNamespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 			Expect(pods).NotTo(BeEmpty(), "Expected at least one pod")
 			// Select one pod to test (works with single or multiple replicas)
@@ -557,7 +557,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			}
 			var sizeOutput bytes.Buffer
 			err = testhelpers.ExecCommandInPodWithWriters(
-				ctx, clientset, restConfig, namespace, pod.Name, "squid", checkSizeCmd, &sizeOutput, os.Stderr)
+				ctx, clientset, restConfig, testhelpers.SquidNamespace, pod.Name, "squid", checkSizeCmd, &sizeOutput, os.Stderr)
 			Expect(err).NotTo(HaveOccurred(), "Failed to check cache volume size")
 
 			sizeStr := strings.TrimSpace(sizeOutput.String())
@@ -583,7 +583,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			}
 
 			err = testhelpers.ExecCommandInPodWithWriters(
-				ctx, clientset, restConfig, namespace, pod.Name, "squid", fillCacheCmd, os.Stdout, os.Stderr)
+				ctx, clientset, restConfig, testhelpers.SquidNamespace, pod.Name, "squid", fillCacheCmd, os.Stdout, os.Stderr)
 			Expect(err).NotTo(HaveOccurred(), "Failed to fill cache")
 
 			By("Verifying cache usage is above 95%")
@@ -591,7 +591,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 				"sh", "-c", "df /var/spool/squid/cache | awk 'NR==2 {print $5}' | sed 's/%//'"}
 			var usageOutput bytes.Buffer
 			err = testhelpers.ExecCommandInPodWithWriters(
-				ctx, clientset, restConfig, namespace, pod.Name, "squid", checkUsageCmd, &usageOutput, os.Stderr)
+				ctx, clientset, restConfig, testhelpers.SquidNamespace, pod.Name, "squid", checkUsageCmd, &usageOutput, os.Stderr)
 			Expect(err).NotTo(HaveOccurred(), "Failed to check cache usage")
 
 			usageStr := strings.TrimSpace(usageOutput.String())
@@ -612,7 +612,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			By("Triggering container restart by killing all processes")
 			killCmd := []string{"kill", "-9", "-1"}
 			_ = testhelpers.ExecCommandInPodWithWriters(
-				ctx, clientset, restConfig, namespace, pod.Name, "squid", killCmd, os.Stderr, os.Stderr,
+				ctx, clientset, restConfig, testhelpers.SquidNamespace, pod.Name, "squid", killCmd, os.Stderr, os.Stderr,
 			)
 
 			By("Waiting for container to restart and become ready")
@@ -622,7 +622,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			Eventually(func() bool {
 				// Wait for restart count to increase
 				// We query by pod.Name, so we always get the same pod (or NotFound error)
-				updatedPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+				updatedPod, err := clientset.CoreV1().Pods(testhelpers.SquidNamespace).Get(ctx, pod.Name, metav1.GetOptions{})
 				if err != nil {
 					return false
 				}
@@ -642,7 +642,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			// Now wait for pod to be Ready using GetSquidPods (same as other tests)
 			// This ensures the container has fully restarted and is ready
-			restartedPods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
+			restartedPods, err := testhelpers.GetPods(ctx, clientset, testhelpers.SquidNamespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods after restart")
 
 			// Find the pod with the same name (ensure it's the same pod, not recreated)
@@ -679,7 +679,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 				checkUsageCmd := []string{"sh", "-c", "df /var/spool/squid/cache | awk 'NR==2 {print $5}' | sed 's/%//'"}
 				var usageOutput bytes.Buffer
 				err := testhelpers.ExecCommandInPodWithWriters(
-					ctx, clientset, restConfig, namespace, restartedPod.Name, "squid",
+					ctx, clientset, restConfig, testhelpers.SquidNamespace, restartedPod.Name, "squid",
 					checkUsageCmd, &usageOutput, os.Stderr,
 				)
 				if err != nil {
@@ -702,7 +702,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			}
 			var dirCountOutput bytes.Buffer
 			err = testhelpers.ExecCommandInPodWithWriters(
-				ctx, clientset, restConfig, namespace, restartedPod.Name, "squid",
+				ctx, clientset, restConfig, testhelpers.SquidNamespace, restartedPod.Name, "squid",
 				checkDirsCmd, &dirCountOutput, os.Stderr,
 			)
 			Expect(err).NotTo(HaveOccurred(), "Failed to check cache directories")

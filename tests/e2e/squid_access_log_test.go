@@ -17,12 +17,12 @@ var _ = Describe("Squid Access Logs", Ordered, func() {
 			By("Waiting 10s for internal squid manager requests to be generated")
 			start := metav1.Now()
 			time.Sleep(10 * time.Second)
-			squidPods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
+			squidPods, err := testhelpers.GetPods(ctx, clientset, testhelpers.SquidNamespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 
 			for _, squidPod := range squidPods {
 				By("Getting the squid container logs from the last 10s")
-				logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, squidContainerName, &start)
+				logs, err := testhelpers.GetPodLogsSince(ctx, clientset, testhelpers.SquidNamespace, squidPod.Name, squidContainerName, &start)
 				Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
 				By("Analyzing access logs for filtered content patterns")
